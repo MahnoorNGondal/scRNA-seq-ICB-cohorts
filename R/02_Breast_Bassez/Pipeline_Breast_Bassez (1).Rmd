@@ -1,0 +1,161 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Bassez_counts_treatment_naive <- readRDS("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1863-counts_cells_cohort1.rds")
+
+meta_data_treatment_naive <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1872-BIOKEY_metaData_cohort1_web.csv", 
+         sep = ",")
+row.names(meta_data_treatment_naive) <- meta_data_treatment_naive$Cell
+
+seurat_Bassez_counts_treatment_naive <- CreateSeuratObject(counts = Bassez_counts_treatment_naive)
+seurat_Bassez_counts_treatment_naive <- AddMetaData(seurat_Bassez_counts_treatment_naive, meta_data_treatment_naive)
+
+
+#####################
+
+Bassez_counts_neoadjuvant <- readRDS("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1867-counts_cells_cohort2.rds")
+
+meta_data_neoadjuvant <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1871-BIOKEY_metaData_cohort2_web.csv", 
+         sep = ",")
+row.names(meta_data_neoadjuvant) <- meta_data_neoadjuvant$Cell
+
+seurat_Bassez_counts_neoadjuvant <- CreateSeuratObject(counts = Bassez_counts_neoadjuvant)
+seurat_Bassez_counts_neoadjuvant <- AddMetaData(seurat_Bassez_counts_neoadjuvant, meta_data_neoadjuvant)
+
+
+```
+
+
+## Finding total cell and total immune cells per patient
+```{r}
+meta_data_treatment_naive_neoadjuvant <- rbind(meta_data_treatment_naive, meta_data_neoadjuvant)
+
+
+# CD8
+dat_total_celltypes <- data.frame(aggregate(cbind(patient_id == cellType) ~  patient_id + cellType, meta_data_treatment_naive_neoadjuvant, length))
+dat_total_celltypes_CD8 <- filter(dat_total_celltypes, dat_total_celltypes$cellType == "T_cell")
+colnames(dat_total_celltypes_CD8) <- c("sample_id" , "cell_type_for_count", "total_T_Cell")
+# CD8_78 <- data.frame(sample_id = c( "LT_S01", "LT_S02", "LT_S05", "LT_S43", "LT_S54", "LT_S67"),
+#                      cell_type_for_count = c("T-cells", "T-cells", "T-cells", "T-cells", "T-cells", "T-cells"),
+#                      total_T_Cell = c(0, 0 , 0, 0, 0, 0))
+# colnames(CD8_78) <- c("sample_id", "cell_type_for_count", "total_T_Cell")
+# dat_total_celltypes_CD8_78 <- rbind(dat_total_celltypes_CD8, CD8_78)
+# rownames(dat_total_celltypes_CD8_78) <- NULL
+
+#Total
+dat_total_cell <- data.frame(aggregate(cbind(patient_id == patient_id) ~  patient_id, meta_data_treatment_naive_neoadjuvant, length))
+colnames(dat_total_cell) <- c("sample_id", "total_cell_per_patient")
+#Merge CD8 + total
+dat_total_cell_CD8 <- merge(dat_total_cell, dat_total_celltypes_CD8, by = "sample_id")
+dat_total_cell_CD8$total_T_Cell <- as.numeric(dat_total_cell_CD8$total_T_Cell)
+
+# only patient which are in the seurat object as well
+seurat_tiss_nonimmune_epi_tumor_subset_patients <- as.data.frame(table(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$sample_id))
+seurat_tiss_nonimmune_epi_tumor_subset_patients$Var <- as.character(seurat_tiss_nonimmune_epi_tumor_subset_patients$Var1)
+patients <- seurat_tiss_nonimmune_epi_tumor_subset_patients$Var 
+dat_total_cell_CD8_filtered <- filter(dat_total_cell_CD8, dat_total_cell_CD8$sample_id %in% patients)
+```
+
+
+## separating tumor and normal in seurat object - cancer
+```{r}
+
+seurat_Bassez_counts_treatment_naive_epi <-  subset(x = seurat_Bassez_counts_treatment_naive, subset = cellType == "Cancer_cell")
+seurat_Bassez_counts_neoadjuvant_epi <-  subset(x = seurat_Bassez_counts_neoadjuvant, subset = cellType == "Cancer_cell")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi <- merge(seurat_Bassez_counts_treatment_naive_epi, seurat_Bassez_counts_neoadjuvant_epi)
+
+## removing samples with less than 20 cells
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md <- seurat_Bassez_counts_treatment_naive_neoadjuvant_epi@meta.data
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md_subset <- seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md[seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md$patient_id %in% names(which(table(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md$patient_id) > 20)), ]
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi$enough_cells <- ifelse(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi$patient_id %in% seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_md_subset$patient_id, "enough", "not_enough")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <-  subset(x = seurat_Bassez_counts_treatment_naive_neoadjuvant_epi, subset = enough_cells == "enough")
+
+## relabeling
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$pre_post <- ifelse(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$timepoint == "Pre", "Pre", "Post")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Study_name <- "Bassez"
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Primary_or_met <- "Primary"
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data , c(Cancer_type = BC_type) )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data , c(sample_id = patient_id) )
+
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$sample_id_pre_post <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$sample_id, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$pre_post )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Cancer_type_pre_post <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Cancer_type, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$pre_post )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data , c(outcome = expansion) )
+
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$treatment_info <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$pre_post, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$cohort )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data , c(cell_id = Cell) )
+
+### adding immune + total cells
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_MD <- seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data
+
+Immune_cell_info <- merge(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_MD, dat_total_cell_CD8_filtered, by = "sample_id")
+Immune_cell_info <- Immune_cell_info[,c("cell_id", colnames(dat_total_cell_CD8_filtered))]
+rownames(Immune_cell_info) <- Immune_cell_info$cell_id
+Immune_cell_info <- Immune_cell_info[,-c(1:2)]
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <- AddMetaData(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset, Immune_cell_info)
+
+## normalizing CD8 abundance
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data$normalized_CD8_totalcells <- seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data$total_T_Cell/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data$total_cell_per_patient
+
+```
+
+
+```{r}
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_MD <- seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data
+dat_Cohort <- data.frame(aggregate(cbind(sample_id == sample_id) ~   sample_id + Cancer_type + outcome , seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_MD, length))
+
+```
+
+## normalization - 1 log transformation
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <- seurat_analysis(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset)
+
+saveRDS(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/breast_bassez/version_06_12_30_22/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset.RDS")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/breast_bassez/version_06_12_30_22/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset.RDS")
+
+```
+
+
