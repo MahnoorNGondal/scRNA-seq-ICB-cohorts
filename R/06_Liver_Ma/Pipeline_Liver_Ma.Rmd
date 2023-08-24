@@ -1,0 +1,228 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Liver_md <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_samples.txt.gz", 
+         sep = "\t")
+row.names(Liver_md) <- Liver_md$Cell.Barcode
+
+Liver_anno <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/Book1.csv", 
+         sep = ",")
+
+Liver_md <- separate(Liver_md, Sample , into = c("sample", "patient", "id"), sep = c("_"))
+
+Liver_md$type = ifelse(Liver_md$id == "LCP18", "H18", NA)
+Liver_md$type = ifelse(Liver_md$id == "LCP21", "H21", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP23", "H23", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP25", "C25", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP26", "C26", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP28", "H28", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP29", "C29", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP30", "H30", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP35", "C35", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP37", "H37", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP38", "H38", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP39", "C39", Liver_md$type)
+
+
+Liver_md_anno <- merge(Liver_md, Liver_anno, by.x = "type", by.y = "ID")
+row.names(Liver_md_anno) <- Liver_md_anno$Cell.Barcode
+
+cts <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_matrix.mtx.gz",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_genes.tsv.gz", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_barcodes.tsv.gz")
+  
+Liver_seurat_set_1 <- CreateSeuratObject(counts = cts)
+seurat_Liver_seurat_set_1 <- AddMetaData(Liver_seurat_set_1, Liver_md_anno)
+
+###################################
+
+Liver_md2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_samples.txt.gz", 
+         sep = "\t")
+row.names(Liver_md2) <- Liver_md2$Cell.Barcode
+
+Liver_anno2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/Book1.csv", 
+         sep = ",")
+
+Liver_md2 <- separate(Liver_md2, Sample , into = c("sample", "patient", "id"), sep = c("_"))
+
+Liver_md2$type = ifelse(Liver_md2$id == "LCP34", "H34", NA)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP42", "C42", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP46", "C46", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP56", "C56", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP60", "C60", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP65", "H65", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP66", "C66", Liver_md2$type)
+
+
+
+Liver_md_anno2 <- merge(Liver_md2, Liver_anno2, by.x = "type", by.y = "ID")
+row.names(Liver_md_anno2) <- Liver_md_anno2$Cell.Barcode
+
+cts2 <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_matrix.mtx.gz",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_genes.tsv.gz", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_barcodes.tsv.gz")
+  
+Liver_seurat_set_2 <- CreateSeuratObject(counts = cts2)
+seurat_Liver_seurat_set_2 <- AddMetaData(Liver_seurat_set_2, Liver_md_anno2)
+
+#################################
+
+
+
+seurat_Liver_seurat_set_1$set <- "Set_1" 
+seurat_Liver_seurat_set_2$set <- "Set_2" 
+
+seurat_Liver_seurat_set_1_2 <- merge(seurat_Liver_seurat_set_1, seurat_Liver_seurat_set_2)
+
+seurat_Liver_seurat_set_1_2_MD <- seurat_Liver_seurat_set_1_2@meta.data
+
+meta_anno <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/CHOL_GSE125449_aPD1aPDL1aCTLA4_CellMetainfo_table.tsv",
+         sep = "\t")
+meta_anno = meta_anno[!duplicated(meta_anno$Patient),]
+meta_anno <- meta_anno[,-c(1:8)]
+
+meta_anno2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/LIHC_GSE125449_aPDL1aCTLA4_CellMetainfo_table.tsv",
+         sep = "\t")
+meta_anno2 = meta_anno2[!duplicated(meta_anno2$Patient),]
+meta_anno2 <- meta_anno2[,-c(1:8)]
+
+meta_anno_2 <- rbind(meta_anno, meta_anno2)
+
+seurat_Liver_seurat_set_1_2_MD <- merge(seurat_Liver_seurat_set_1_2_MD, meta_anno_2, by.x = "type", by.y = "Patient")
+rownames(seurat_Liver_seurat_set_1_2_MD) <- seurat_Liver_seurat_set_1_2_MD$Cell.Barcode
+seurat_Liver_seurat_set_1_2_MD <- seurat_Liver_seurat_set_1_2_MD[,c(21:25)]
+
+seurat_Liver_seurat_set_1_2 <- AddMetaData(seurat_Liver_seurat_set_1_2, seurat_Liver_seurat_set_1_2_MD)
+```
+
+
+## Finding total cell and total immune cells per patient
+```{r}
+seurat_Liver_seurat_set_1_2_meta <- seurat_Liver_seurat_set_1_2@meta.data
+
+# CD8
+dat_total_celltypes <- data.frame(aggregate(cbind(type == Type) ~  type + Type, seurat_Liver_seurat_set_1_2_meta, length))
+dat_total_celltypes_CD8 <- filter(dat_total_celltypes, dat_total_celltypes$Type == "T cell")
+colnames(dat_total_celltypes_CD8) <- c("sample_id", "cell_type_for_count", "total_T_Cell")
+CD8_78 <- as.data.frame(t(as.data.frame(c("H23", "T cell", 0))))
+colnames(CD8_78) <- c("sample_id", "cell_type_for_count", "total_T_Cell")
+dat_total_celltypes_CD8_78 <- rbind(dat_total_celltypes_CD8, CD8_78)
+rownames(dat_total_celltypes_CD8_78) <- NULL
+
+#Total
+dat_total_cell <- data.frame(aggregate(cbind(type == type) ~  type, seurat_Liver_seurat_set_1_2_meta, length))
+colnames(dat_total_cell) <- c("sample_id", "total_cell_per_patient")
+#Merge CD8 + total
+dat_total_cell_CD8 <- merge(dat_total_cell, dat_total_celltypes_CD8_78, by = "sample_id")
+dat_total_cell_CD8$total_T_Cell <- as.numeric(dat_total_cell_CD8$total_T_Cell)
+
+# only patient which are in the seurat object as well
+seurat_Liver_seurat_set_1_2_epi_subset_patients <- as.data.frame(table(seurat_Liver_seurat_set_1_2_epi_subset$sample_id))
+seurat_Liver_seurat_set_1_2_epi_subset_patients$Var <- as.character(seurat_Liver_seurat_set_1_2_epi_subset_patients$Var1)
+patients <- seurat_Liver_seurat_set_1_2_epi_subset_patients$Var 
+dat_total_cell_CD8_filtered <- filter(dat_total_cell_CD8, dat_total_cell_CD8$sample_id %in% patients)
+
+```
+
+
+## separating tumor and normal in seurat object
+```{r}
+
+
+seurat_Liver_seurat_set_1_2_epi <-  subset(x = seurat_Liver_seurat_set_1_2, subset = Type == "Malignant cell")
+
+## removing samples with less than 20 cells
+seurat_Liver_seurat_set_1_2_epi_md <- seurat_Liver_seurat_set_1_2_epi@meta.data
+seurat_Liver_seurat_set_1_2_epi_md_subset <- seurat_Liver_seurat_set_1_2_epi_md[seurat_Liver_seurat_set_1_2_epi_md$type %in% names(which(table(seurat_Liver_seurat_set_1_2_epi_md$type) > 20)), ]
+
+seurat_Liver_seurat_set_1_2_epi$enough_cells <- ifelse(seurat_Liver_seurat_set_1_2_epi$type %in% seurat_Liver_seurat_set_1_2_epi_md_subset$type, "enough", "not_enough")
+
+seurat_Liver_seurat_set_1_2_epi_subset <-  subset(x = seurat_Liver_seurat_set_1_2_epi, subset = enough_cells == "enough")
+
+seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione_2 <- ifelse(is.na(seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione) == TRUE, "No", seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione)
+
+
+## relabeling
+seurat_Liver_seurat_set_1_2_epi_subset$pre_post <- ifelse(seurat_Liver_seurat_set_1_2_epi_subset$Treatment == "NO", "Pre", "Post")
+
+seurat_Liver_seurat_set_1_2_epi_subset$Study_name <- "Ma"
+seurat_Liver_seurat_set_1_2_epi_subset$Cancer_type <- ifelse(seurat_Liver_seurat_set_1_2_epi_subset$Diagnosis == "iCCA", "iCCA", "HCC" )
+
+seurat_Liver_seurat_set_1_2_epi_subset$Primary_or_met <- "Primary"
+
+seurat_Liver_seurat_set_1_2_epi_subset@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2_epi_subset@meta.data , c(sample_id = type) )
+
+
+seurat_Liver_seurat_set_1_2_epi_subset$sample_id_pre_post <- paste0(seurat_Liver_seurat_set_1_2_epi_subset$sample_id, "_", seurat_Liver_seurat_set_1_2_epi_subset$pre_post )
+
+
+
+
+seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione_2 <- ifelse(seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione_2 == "No", 
+                                                      "Untreated", seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione_2)
+
+
+seurat_Liver_seurat_set_1_2_epi_subset$sample_id_Mode.of.Actione_2 <- paste0(seurat_Liver_seurat_set_1_2_epi_subset$sample_id, "_", seurat_Liver_seurat_set_1_2_epi_subset$Mode.of.Actione_2 )
+
+seurat_Liver_seurat_set_1_2_epi_subset@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2_epi_subset@meta.data , c(cell_id = Cell.Barcode) )
+
+### adding immune + total cells
+seurat_Liver_seurat_set_1_2_epi_subset_MD <- seurat_Liver_seurat_set_1_2_epi_subset@meta.data
+
+Immune_cell_info <- merge(seurat_Liver_seurat_set_1_2_epi_subset_MD, dat_total_cell_CD8_filtered, by = "sample_id")
+Immune_cell_info <- Immune_cell_info[,c("cell_id", colnames(dat_total_cell_CD8_filtered))]
+rownames(Immune_cell_info) <- Immune_cell_info$cell_id
+Immune_cell_info <- Immune_cell_info[,-c(1:2)]
+
+seurat_Liver_seurat_set_1_2_epi_subset <- AddMetaData(seurat_Liver_seurat_set_1_2_epi_subset, Immune_cell_info)
+
+## normalizing CD8 abundance
+seurat_Liver_seurat_set_1_2_epi_subset@meta.data$normalized_CD8_totalcells <- seurat_Liver_seurat_set_1_2_epi_subset@meta.data$total_T_Cell/seurat_Liver_seurat_set_1_2_epi_subset@meta.data$total_cell_per_patient
+
+
+
+
+```
+
+```{r}
+seurat_Liver_seurat_set_1_2_epi_subset_MD <- seurat_Liver_seurat_set_1_2_epi_subset@meta.data
+dat_Cohort <- data.frame(aggregate(cbind(sample_id == sample_id) ~  Diagnosis , seurat_Liver_seurat_set_1_2_epi_subset_MD, length))
+
+```
+
+## normalization - 1 log transformation
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+seurat_Liver_seurat_set_1_2_epi_subset <- seurat_analysis(seurat_Liver_seurat_set_1_2_epi_subset)
+
+saveRDS(seurat_Liver_seurat_set_1_2_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/Liver_Ma/version_04_30_12_22/seurat_Liver_seurat_set_1_2_epi_subset.RDS")
+seurat_Liver_seurat_set_1_2_epi_subset <- readRDS( "/mctp/share/users/gondal/01_scHLA/03_output/Liver_Ma/version_04_30_12_22/seurat_Liver_seurat_set_1_2_epi_subset.RDS")
+```
