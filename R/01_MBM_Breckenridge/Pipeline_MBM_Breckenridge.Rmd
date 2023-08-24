@@ -1,0 +1,176 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+# h5_file_format
+```{r}
+
+base_metadata <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_base_metadata.tsv", 
+         sep = "\t")
+base_metadata <- base_metadata[-c(1),]
+row.names(base_metadata) <- base_metadata$NAME
+base_metadata$NAME <- NULL
+
+  cts <- ReadMtx(mtx = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_raw.mtx",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_preQC_genes_raw.tsv", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_preQC_cellnames_raw.tsv", feature.column = 1)
+  
+seurat_MBM_Christopher <- CreateSeuratObject(counts = cts)
+seurat_MBM_Christopher_m <- AddMetaData(seurat_MBM_Christopher, base_metadata)
+
+
+clustering_data <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/postQC_c1000_spatial.tsv", 
+         sep = "\t")
+clustering_data <- clustering_data[-c(1),]
+row.names(clustering_data) <- clustering_data$NAME 
+clustering_data$NAME <- NULL
+
+seurat_MBM_Christopher_m <- AddMetaData(seurat_MBM_Christopher_m, clustering_data)
+
+
+clinical_data <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/mbm.csv", 
+         sep = ",")
+clinical_data <- as.data.frame(t(clinical_data))
+colnames(clinical_data) <- clinical_data[c(1),]
+clinical_data$donor_id <- rownames(clinical_data)
+
+clinical_data$donor_id  <- gsub('\\.','',clinical_data$donor_id )
+clinical_data <- clinical_data[-c(1),]
+
+seurat_MBM_Christopher_m@meta.data <- rownames_to_column(seurat_MBM_Christopher_m@meta.data)
+seurat_MBM_Christopher_m@meta.data <- dplyr::rename(seurat_MBM_Christopher_m@meta.data , c(cell_id = rowname) )
+
+seurat_MBM_Christopher_m@meta.data <- merge(seurat_MBM_Christopher_m@meta.data, clinical_data, by = "donor_id")
+
+rownames(seurat_MBM_Christopher_m@meta.data) <- seurat_MBM_Christopher_m@meta.data$cell_id
+```
+
+
+## Finding total cell and total immune cells per patient
+```{r}
+seurat_MBM_Christopher_m_meta <- seurat_MBM_Christopher_m@meta.data
+
+# CD8
+dat_total_celltypes <- data.frame(aggregate(cbind(donor_id == cell.type) ~  donor_id + cell.type, seurat_MBM_Christopher_m_meta, length))
+dat_total_celltypes_CD8 <- filter(dat_total_celltypes, dat_total_celltypes$cell.type == "T Cell")
+colnames(dat_total_celltypes_CD8) <- c("sample_id", "cell_type_for_count", "total_T_Cell")
+CD8_78 <- as.data.frame(t(as.data.frame(c("MEL011", "T Cell", 0))))
+colnames(CD8_78) <- c("sample_id", "cell_type_for_count", "total_T_Cell")
+dat_total_celltypes_CD8_78 <- rbind(dat_total_celltypes_CD8, CD8_78)
+rownames(dat_total_celltypes_CD8_78) <- NULL
+
+#Total
+dat_total_cell <- data.frame(aggregate(cbind(donor_id == donor_id) ~  donor_id, seurat_MBM_Christopher_m_meta, length))
+colnames(dat_total_cell) <- c("sample_id", "total_cell_per_patient")
+#Merge CD8 + total
+dat_total_cell_CD8 <- merge(dat_total_cell, dat_total_celltypes_CD8_78, by = "sample_id")
+dat_total_cell_CD8$total_T_Cell <- as.numeric(dat_total_cell_CD8$total_T_Cell)
+
+# only patient which are in the seurat object as well
+seurat_MBM_Christopher_m_epi_subset_patients <- as.data.frame(table(seurat_MBM_Christopher_m_epi_subset$sample_id))
+seurat_MBM_Christopher_m_epi_subset_patients$Var <- as.character(seurat_MBM_Christopher_m_epi_subset_patients$Var1)
+patients <- seurat_MBM_Christopher_m_epi_subset_patients$Var 
+dat_total_cell_CD8_filtered <- filter(dat_total_cell_CD8, dat_total_cell_CD8$sample_id %in% patients)
+
+```
+
+
+## separating tumor and normal in seurat object
+```{r}
+
+seurat_MBM_Christopher_m_epi <-  subset(x = seurat_MBM_Christopher_m, subset = cell.type == "malignant")
+seurat_MBM_Christopher_m_epi$donor_id_prepost <- paste0(seurat_MBM_Christopher_m_epi$donor_id, "_", seurat_MBM_Christopher_m_epi$`Pre/post ICI`)
+
+colnames(seurat_MBM_Christopher_m_epi@meta.data)[39] <- "responder"
+
+seurat_MBM_Christopher_m_epi$donor_id_responder <- paste0(seurat_MBM_Christopher_m_epi$donor_id, "_", seurat_MBM_Christopher_m_epi$responder)
+
+## removing samples with less than 20 cells
+seurat_MBM_Christopher_m_epi_md <- seurat_MBM_Christopher_m_epi@meta.data
+seurat_MBM_Christopher_m_epi_md_subset <- seurat_MBM_Christopher_m_epi_md[seurat_MBM_Christopher_m_epi_md$donor_id %in% names(which(table(seurat_MBM_Christopher_m_epi_md$donor_id) > 20)), ]
+
+seurat_MBM_Christopher_m_epi$enough_cells <- ifelse(seurat_MBM_Christopher_m_epi$donor_id %in% seurat_MBM_Christopher_m_epi_md_subset$donor_id, "enough", "not_enough")
+
+seurat_MBM_Christopher_m_epi_subset <-  subset(x = seurat_MBM_Christopher_m_epi, subset = enough_cells == "enough")
+
+seurat_MBM_Christopher_m_epi_subset@meta.data$donor_id_prepost_responder <- paste0(seurat_MBM_Christopher_m_epi_subset@meta.data$donor_id_prepost, "_", seurat_MBM_Christopher_m_epi_subset@meta.data$responder)
+
+## relabeling
+seurat_MBM_Christopher_m_epi_subset$pre_post <- ifelse(seurat_MBM_Christopher_m_epi_subset$`Pre/post ICI` == "Post", "Post", "Pre")
+seurat_MBM_Christopher_m_epi_subset$outcome <- ifelse(seurat_MBM_Christopher_m_epi_subset$outcome == "Untreated", "UT", seurat_MBM_Christopher_m_epi_subset$outcome)
+
+seurat_MBM_Christopher_m_epi_subset$Study_name <- "Alvarez_Breckenridge"
+seurat_MBM_Christopher_m_epi_subset$Cancer_type <- "Melanoma_derived_brain_metastases"
+
+seurat_MBM_Christopher_m_epi_subset$Primary_or_met <- "Metastatic"
+
+seurat_MBM_Christopher_m_epi_subset@meta.data <- dplyr::rename(seurat_MBM_Christopher_m_epi_subset@meta.data , c(outcome = responder) )
+
+seurat_MBM_Christopher_m_epi_subset@meta.data <- dplyr::rename(seurat_MBM_Christopher_m_epi_subset@meta.data , c(sample_id = donor_id) )
+
+seurat_MBM_Christopher_m_epi_subset$sample_id_pre_post <- paste0(seurat_MBM_Christopher_m_epi_subset$sample_id, "_", seurat_MBM_Christopher_m_epi_subset$pre_post )
+
+seurat_MBM_Christopher_m_epi_subset$sample_id_pre_post_outcome <- paste0(seurat_MBM_Christopher_m_epi_subset$sample_id_pre_post, "_", seurat_MBM_Christopher_m_epi_subset$outcome )
+
+
+seurat_MBM_Christopher_m_epi_subset$outcome <- ifelse(seurat_MBM_Christopher_m_epi_subset$outcome == "No ICI", 
+                                                      "Untreated", seurat_MBM_Christopher_m_epi_subset$outcome)
+### adding immune + total cells
+seurat_MBM_Christopher_m_epi_subset_MD <- seurat_MBM_Christopher_m_epi_subset@meta.data
+
+Immune_cell_info <- merge(seurat_MBM_Christopher_m_epi_subset_MD, dat_total_cell_CD8_filtered, by = "sample_id")
+Immune_cell_info <- Immune_cell_info[,c("cell_id", colnames(dat_total_cell_CD8_filtered))]
+rownames(Immune_cell_info) <- Immune_cell_info$cell_id
+Immune_cell_info <- Immune_cell_info[,-c(1:2)]
+
+seurat_MBM_Christopher_m_epi_subset <- AddMetaData(seurat_MBM_Christopher_m_epi_subset, Immune_cell_info)
+
+## normalizing CD8 abundance
+seurat_MBM_Christopher_m_epi_subset@meta.data$normalized_CD8_totalcells <- seurat_MBM_Christopher_m_epi_subset@meta.data$total_T_Cell/seurat_MBM_Christopher_m_epi_subset@meta.data$total_cell_per_patient
+
+
+```
+
+```{r}
+seurat_MBM_Christopher_m_epi_subset_MD <- seurat_MBM_Christopher_m_epi_subset@meta.data
+dat_Cohort <- data.frame(aggregate(cbind(sample_id == total_T_Cell) ~  sample_id + total_T_Cell + pre_post + cell.type + outcome, seurat_MBM_Christopher_m_epi_subset_MD, length))
+
+```
+
+
+## normalization - 1 log transformation
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+
+seurat_MBM_Christopher_m_epi_subset <- seurat_analysis(seurat_MBM_Christopher_m_epi_subset)
+
+#updated
+saveRDS(seurat_MBM_Christopher_m_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Christopher/version_02_29_12_22/seurat_MBM_Christopher_m_epi_subset.RDS")
+seurat_MBM_Christopher_m_epi_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Christopher/version_02_29_12_22/seurat_MBM_Christopher_m_epi_subset.RDS")
+```
+
+
+
