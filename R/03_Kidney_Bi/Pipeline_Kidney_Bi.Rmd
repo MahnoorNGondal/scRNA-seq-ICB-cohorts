@@ -1,0 +1,471 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Bi_whole_cluster <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/Bi.txt", 
+         sep = "\t")
+Bi_whole_cluster <- Bi_whole_cluster[-c(1),]
+row.names(Bi_whole_cluster) <- Bi_whole_cluster$NAME
+Bi_whole_cluster$NAME <- NULL
+
+
+
+cts <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/matrix.mtx",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/genes.tsv", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/barcodes.tsv")
+  
+Bi_seurat <- CreateSeuratObject(counts = cts)
+Bi_seurat_md <- AddMetaData(Bi_seurat, Bi_whole_cluster)
+
+Bi_seurat_md_na <-  subset(x = Bi_seurat_md, subset = species__ontology_label == "Homo sapiens")
+
+md <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/Meta-data_Bi2021_Kidney.csv", 
+         sep = ",")
+
+Bi_seurat_md_na_MD <- Bi_seurat_md_na@meta.data
+
+Bi_seurat_md_na_MD$cell_id <- rownames(Bi_seurat_md_na_MD)
+
+Bi_seurat_md_na_MD <- merge(Bi_seurat_md_na_MD, md, by.x = "donor_id", by.y = "sample")
+rownames(Bi_seurat_md_na_MD) <- Bi_seurat_md_na_MD$cell_id
+
+Bi_seurat_md_na <- AddMetaData(Bi_seurat_md_na, Bi_seurat_md_na_MD)
+
+```
+
+## Finding total cell and total immune cells per patient
+```{r}
+
+Bi_seurat_md_na_meta <- Bi_seurat_md_na@meta.data
+
+CD8 <- c("41BB-Hi CD8+ T cell", "41BB-Lo CD8+ T cell", "Cycling CD8+ T cell", "MitoHigh CD8+ T cell", "MX1-Hi CD8+ T cell")
+
+Bi_seurat_md_na_meta$FinalCellType_update <- ifelse(Bi_seurat_md_na_meta$FinalCellType %in% CD8, "CD_8T", Bi_seurat_md_na_meta$FinalCellType)
+
+# CD8
+dat_total_celltypes <- data.frame(aggregate(cbind(donor_id == FinalCellType_update) ~  donor_id + FinalCellType_update, Bi_seurat_md_na_meta, length))
+dat_total_celltypes_CD8 <- filter(dat_total_celltypes, dat_total_celltypes$FinalCellType_update == "CD_8T")
+colnames(dat_total_celltypes_CD8) <- c("sample_id" , "cell_type_for_count", "total_T_Cell")
+
+# T
+Tcells <- c("41BB-Hi CD8+ T cell", "41BB-Lo CD8+ T cell", "Cycling CD8+ T cell", "MitoHigh CD8+ T cell", "MX1-Hi CD8+ T cell", "Effector T-Helper", "Memory T-Helper", "MitoHigh T-Helper", "T-Reg")
+Bi_seurat_md_na_meta$cluster_update_T <- ifelse(Bi_seurat_md_na_meta$FinalCellType %in% Tcells, "T_cells", Bi_seurat_md_na_meta$FinalCellType)
+
+dat_total_celltypes <- data.frame(aggregate(cbind(donor_id == cluster_update_T) ~  donor_id + cluster_update_T, Bi_seurat_md_na_meta, length))
+dat_total_celltypes_T <- filter(dat_total_celltypes, dat_total_celltypes$cluster_update_T == "T_cells")
+colnames(dat_total_celltypes_T) <- c("sample_id" , "cell_type_for_count", "total_T_Cell_only")
+
+dat_total_celltypes_CD8_T <- merge(dat_total_celltypes_CD8, dat_total_celltypes_T, by = "sample_id")
+
+#Total
+dat_total_cell <- data.frame(aggregate(cbind(donor_id == donor_id) ~  donor_id, Bi_seurat_md_na_meta , length))
+colnames(dat_total_cell) <- c("sample_id", "total_cell_per_patient")
+#Merge CD8 + total
+dat_total_cell_CD8 <- merge(dat_total_cell, dat_total_celltypes_CD8_T, by = "sample_id")
+dat_total_cell_CD8$total_T_Cell <- as.numeric(dat_total_cell_CD8$total_T_Cell)
+
+# only patient which are in the seurat object as well
+Bi_seurat_md_na_tumor_subset_ccRCC_patients <- as.data.frame(table(Bi_seurat_md_na_tumor_subset_ccRCC$sample_id))
+Bi_seurat_md_na_tumor_subset_ccRCC_patients$Var <- as.character(Bi_seurat_md_na_tumor_subset_ccRCC_patients$Var1)
+patients <- Bi_seurat_md_na_tumor_subset_ccRCC_patients$Var 
+dat_total_cell_CD8_filtered <- filter(dat_total_cell_CD8, dat_total_cell_CD8$sample_id %in% patients)
+```
+
+
+## separating tumor and normal in seurat object - cancer
+```{r}
+
+Bi_seurat_md_na_tumor <-  subset(x = Bi_seurat_md_na, subset = Lineage == "Putative Tumor")
+Bi_seurat_md_na_tumor <-  subset(x = Bi_seurat_md_na_tumor, subset = FinalCellType != "Misc/Undetermined")
+
+## removing samples with less than 20 cells
+Bi_seurat_md_na_tumor_md <- Bi_seurat_md_na_tumor@meta.data
+Bi_seurat_md_na_tumor_md_subset <- Bi_seurat_md_na_tumor_md[Bi_seurat_md_na_tumor_md$donor_id %in% names(which(table(Bi_seurat_md_na_tumor_md$donor_id) > 20)), ]
+
+Bi_seurat_md_na_tumor$enough_cells <- ifelse(Bi_seurat_md_na_tumor$donor_id %in% Bi_seurat_md_na_tumor_md_subset$donor_id, "enough", "not_enough")
+
+Bi_seurat_md_na_tumor_subset <-  subset(x = Bi_seurat_md_na_tumor, subset = enough_cells == "enough")
+
+Bi_seurat_md_na_tumor_subset_ccRCC <-  subset(x = Bi_seurat_md_na_tumor_subset, subset = disease__ontology_label != "papillary renal cell carcinoma")
+
+## relabeling
+Bi_seurat_md_na_tumor_subset_ccRCC$pre_post <- ifelse(Bi_seurat_md_na_tumor_subset_ccRCC$treated_naive == "naive", "Pre", "Post")
+
+Bi_seurat_md_na_tumor_subset_ccRCC$Study_name <- "Bi"
+Bi_seurat_md_na_tumor_subset_ccRCC$Cancer_type <- "ccRCC"
+
+Bi_seurat_md_na_tumor_subset_ccRCC$Primary_or_met <- "Metastatic"
+
+Bi_seurat_md_na_tumor_subset_ccRCC@meta.data <- dplyr::rename(Bi_seurat_md_na_tumor_subset_ccRCC@meta.data , c(sample_id = donor_id) )
+
+
+Bi_seurat_md_na_tumor_subset_ccRCC$sample_id_pre_post <- paste0(Bi_seurat_md_na_tumor_subset_ccRCC$sample_id, "_", Bi_seurat_md_na_tumor_subset_ccRCC$pre_post )
+
+
+Bi_seurat_md_na_tumor_subset_ccRCC$outcome <- ifelse(Bi_seurat_md_na_tumor_subset_ccRCC$ICB_Response == "NoICB", 
+                                                      "Untreated", Bi_seurat_md_na_tumor_subset_ccRCC$ICB_Response)
+
+Bi_seurat_md_na_tumor_subset_ccRCC$outcome <- ifelse(Bi_seurat_md_na_tumor_subset_ccRCC$outcome =="ICB_PR", "PR", Bi_seurat_md_na_tumor_subset_ccRCC$outcome)
+Bi_seurat_md_na_tumor_subset_ccRCC$outcome <- ifelse(Bi_seurat_md_na_tumor_subset_ccRCC$outcome =="Untreated", "UT", Bi_seurat_md_na_tumor_subset_ccRCC$outcome)
+Bi_seurat_md_na_tumor_subset_ccRCC$outcome <- ifelse(Bi_seurat_md_na_tumor_subset_ccRCC$outcome =="ICB_SD", "SD", Bi_seurat_md_na_tumor_subset_ccRCC$outcome)
+
+
+### adding immune + total cells
+Bi_seurat_md_na_tumor_subset_ccRCC_MD <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data
+
+Immune_cell_info <- merge(Bi_seurat_md_na_tumor_subset_ccRCC_MD, dat_total_cell_CD8_filtered, by = "sample_id")
+Immune_cell_info <- Immune_cell_info[,c("cell_id", colnames(dat_total_cell_CD8_filtered))]
+rownames(Immune_cell_info) <- Immune_cell_info$cell_id
+Immune_cell_info <- Immune_cell_info[,-c(1:2)]
+
+Bi_seurat_md_na_tumor_subset_ccRCC <- AddMetaData(Bi_seurat_md_na_tumor_subset_ccRCC, Immune_cell_info)
+
+## normalizing CD8 abundance
+Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$normalized_CD8_actual_totalcells <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$total_T_Cell/Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$total_cell_per_patient
+
+## normalizing T abundance
+Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$normalized_CD8_totalcells <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$total_T_Cell_only/Bi_seurat_md_na_tumor_subset_ccRCC@meta.data$total_cell_per_patient
+
+# normalized_CD8_actual_totalcells - really CD8 normalization (within study comparison)
+# normalized_CD8_totalcells - not really CD8 but T cell normalization (cross study comparison)
+
+
+```
+
+```{r}
+Bi_seurat_md_na_tumor_subset_ccRCC_MD <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data
+dat_Cohort <- data.frame(aggregate(cbind(sample_id == sample_id) ~  sample_id + pre_post + outcome, Bi_seurat_md_na_tumor_subset_ccRCC_MD, length))
+
+```
+
+## normalization - 1 log transformation
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+Bi_seurat_md_na_tumor_subset_ccRCC <- seurat_analysis(Bi_seurat_md_na_tumor_subset_ccRCC)
+Bi_seurat_md_na <- seurat_analysis(Bi_seurat_md_na)
+saveRDS(Bi_seurat_md_na, "/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_06_01_02_22/Bi_seurat_md_na.RDS")
+
+# updated
+saveRDS(Bi_seurat_md_na_tumor_subset_ccRCC, "/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_06_01_02_22/Bi_seurat_md_na_tumor_subset_ccRCC.RDS")
+Bi_seurat_md_na_tumor_subset_ccRCC <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_06_01_02_22/Bi_seurat_md_na_tumor_subset_ccRCC.RDS")
+#Bi_seurat_md_na_tumor_subset_ccRCC <- saveRDS("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_05_12_30_22/Bi_seurat_md_na_tumor_subset_ccRCC.RDS")
+```
+
+## plotting umaps
+```{r}
+
+
+DimPlot(Bi_seurat_md_na_tumor_subset_ccRCC, reduction = "umap", group.by = "sample_id", label = TRUE, pt.size = 0.4) + labs(title = bquote('6,973 cancer cells - Bi et al (2021)'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=14)) +
+  labs(color = "Groups")  +theme(legend.position = "none", 
+               legend.text = element_text(size = 10))
+
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_05_12_30_22/umap1.png", width = 6, height=5)
+
+
+
+
+
+```
+
+## plotting seurat dotplots
+```{r}
+
+# seurat_tiss_nonimmune_epi_subset <- SetIdent(seurat_tiss_nonimmune_epi_subset, value = seurat_tiss_nonimmune_epi_subset$treatment)
+# 
+# seurat_tiss_nonimmune_epi_subset@active.ident <- factor(seurat_tiss_nonimmune_epi_subset@active.ident,               levels=unique(c(sort(seurat_tiss_nonimmune_epi_subset$T_R_G, decreasing=FALSE))))
+
+Bi_seurat_md_na_tumor_subset_ccRCC <- SetIdent(Bi_seurat_md_na_tumor_subset_ccRCC, value = Bi_seurat_md_na_tumor_subset_ccRCC$Biopsy.Site)
+
+DotPlot(Bi_seurat_md_na_tumor_subset_ccRCC, features=features, dot.scale = 8)+RotatedAxis()+theme(axis.text.x=element_text(size=14),axis.text.y=element_text(size=14))  + xlab(NULL) +  ylab(NULL)  + 
+    theme(axis.text.x = element_text(angle=90)) + guides(size = guide_legend(title="Percent\nExpressed")) +
+guides(color = guide_colorbar( title = 'Average\nExpression',  legend.title=element_text(size=4)))   + theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank()) +theme(axis.text.x=element_text(size=14))+theme(axis.text.y=element_text(size=14)) +theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=14)) + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_05_12_30_22/dimplot_3.png", width =8, height = 5)
+
+```
+
+
+## heatmap
+```{r}
+#Whole_miniatlas_metadata_nor2_epi_T <- ScaleData(Whole_miniatlas_metadata_nor2_epi_T, features = rownames(Whole_miniatlas_metadata_nor2_epi_T))
+
+seurat_tiss_nonimmune_epi_tumor_subset <- SetIdent(seurat_tiss_nonimmune_epi_tumor_subset, value = seurat_tiss_nonimmune_epi_tumor_subset@meta.data$sample_name)
+
+down.sample <- subset(seurat_tiss_nonimmune_epi_tumor_subset,  downsample = 100)
+
+scale_data <- GetAssayData(down.sample, slot = "scale.data", assay = "RNA")
+
+scale_data_subset <- (scale_data[imp_features, ])
+scale_data_subset_df <- t((scale_data_subset))
+scale_data_subset_df_df <- data.frame(scale_data_subset_df)
+scale_data_subset_df_df$sample <- rownames(scale_data_subset_df_df)
+
+down.sample_meta.data <- down.sample@meta.data
+down.sample_meta.data$sample <- rownames(down.sample_meta.data)
+scale_data_subset_df_merge <- merge(scale_data_subset_df_df, down.sample_meta.data, by = "sample")
+
+
+rownames(scale_data_subset_df_merge) <- scale_data_subset_df_merge$sample
+scale_data_subset_df_merge[1] <- NULL
+
+scale_data_subset_df_merge_sort <- scale_data_subset_df_merge[with(scale_data_subset_df_merge, order(sample_name, histolgy, B2M, CD74)),]
+
+scale_data_subset_df_merge_remove <- scale_data_subset_df_merge_sort[,-c(42:127)]
+scale_data_subset_df_merge_matrix <- t(as.matrix(scale_data_subset_df_merge_remove))
+
+
+gene_info <- as.data.frame(imp_features)
+gene_info$Sig. <- "MHC_1"
+gene_info$Sig.[4:40] <- "MHC_2"
+gene_info$Sig.[11:40] <- "non_classical_MHC"
+gene_info$Sig.[15:40] <- "TF"
+gene_info$Sig.[27:40] <- "APM"
+gene_info$Sig.[34:40] <- "Markers"
+gene_info$Sig.[36:40] <- "IP"
+row.names(gene_info) <- gene_info$imp_features
+gene_info[1] <- NULL
+
+down.sample_meta_data_specific <- data.frame(rownames(down.sample@meta.data), down.sample$sample_name, down.sample$histolgy, down.sample$Biopsy.Site, down.sample$Primary.Metastatic, down.sample$Treatement.Timepoint)
+down.sample_meta_data_specific[1] <- NULL
+colnames(down.sample_meta_data_specific) <- c("sample_name", "histolgy", "Biopsy.Site", "Primary.Metastatic", "Treatement.Timepoint")
+
+png(file="/mctp/share/users/gondal/01_scHLA/03_output/Lung_Maynard/version_06_12_26_22/all_heatmapnew_46_mal.png", width=700, height=1000)
+#, "#a83616", "#59e6ff", "#a659ff", "#ff8359"
+htmap <- ComplexHeatmap::pheatmap(scale_data_subset_df_merge_matrix, cluster_rows = FALSE, cluster_cols = FALSE, show_colnames = FALSE, annotation_row = gene_info,  annotation_col = down.sample_meta_data_specific, breaks = seq(-2, 2, length.out = 100),col = colorRamp2(c(-2, 0, 2), c("#6d79c2", "white", "#d90202")), name = "Expression", heatmap_legend_param = list(
+                                      legend_direction = "horizontal", 
+                                      legend_width = unit(5, "cm")
+                                     ), row_names_side = "left" 
+              ) 
+                         
+                    draw( htmap ,  heatmap_legend_side="bottom",   annotation_legend_side="right",
+           legend_grouping = "original")
+
+dev.off()
+
+```
+
+
+
+
+
+## FetchData log2 normalized
+```{r}
+ 
+fetchdata <- function(seurat_obj, x,  x_name) {
+  for (i in 1:length(x))
+  {
+    log_data <- FetchData(seurat_obj, x )
+    log_data_exp <- data.frame((sapply(log_data, expm1)))
+    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
+    log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog)
+    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
+    log_data_exp$sample <- rownames(log_data)
+    
+    return(log_data_exp)
+  }
+}
+
+
+MHC_1_Rasa <- fetchdata(Bi_seurat_md_na_tumor_subset_ccRCC, features_MHC_1_classical, "MHC_1")
+MHC_2_Rasa <- fetchdata(Bi_seurat_md_na_tumor_subset_ccRCC, features_MHC_2_classical,  "MHC_2")
+
+```
+
+
+```{r}
+fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,
+                                          MHC_2_Rasa), by = 'sample', type = 'full')
+
+fetchdata_all1_Rasa <- fetchdata_all_Rasa
+Bi_seurat_md_na_tumor_subset_ccRCC_meta_data <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data
+
+Bi_seurat_md_na_tumor_subset_ccRCC_meta_data$sample <- rownames(Bi_seurat_md_na_tumor_subset_ccRCC_meta_data)
+
+fetchdata_all1_Rasa2 <- left_join(x = Bi_seurat_md_na_tumor_subset_ccRCC_meta_data, 
+                               y = fetchdata_all1_Rasa, 
+                               by = "sample")
+
+```
+
+## boxplots with p values
+```{r fig1, fig.height =2.5, fig.width =4}
+
+fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample_id", "pre_post", "Primary_or_met", "outcome", "MHC_1", "MHC_2")]
+
+
+fetchdata_all1_Rasa2_geneset_melt <- melt(fetchdata_all1_Rasa2_geneset)
+# 
+# 
+fetchdata_all1_Rasa2_geneset_melt$outcome <- factor (fetchdata_all1_Rasa2_geneset_melt$outcome, levels = c ("UT", "SD", "PR" ))
+
+names(fetchdata_all1_Rasa2_geneset_melt)[names(fetchdata_all1_Rasa2_geneset_melt) == 'variable'] <- 'signature'
+
+fetchdata_all1_Rasa2_geneset_melt$pre_post <- factor (fetchdata_all1_Rasa2_geneset_melt$pre_post, levels = c ("Pre", "Post" ))
+
+  #, palette = c("#00AFBB", "#E7B800")
+  b <- ggboxplot(fetchdata_all1_Rasa2_geneset_melt, x = "outcome", y = "value", palette = c("#00AFBB", "#E7B800", "red"), fill = "outcome")    + ylab("Cancer Expression")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=25))+theme(axis.text.y=element_text(size=25)) + theme(legend.title = element_text(size=25))+
+  theme(legend.text = element_text(size=25)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 25)) + theme(text = element_text(size = 25))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2))  +
+  scale_fill_manual(values = c("#00AFBB", "#E7B800", "red")) +
+  labs(color = "Response")  +
+  theme_classic()+theme(axis.text.x=element_text(size=25))+theme(axis.text.y=element_text(size=25)) + theme(legend.title = element_text(size=25))+
+  theme(legend.text = element_text(size=25)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 25)) + theme(text = element_text(size =25))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") +
+  guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL)) 
+ b
+ b
+b <- facet(b, facet.by =  c("signature"),  nrow = 4,
+ ncol = 2, scales = "free_y")
+ b
+
+ stat.test <- fetchdata_all1_Rasa2_geneset_melt  %>%
+  rstatix::group_by(signature)  %>%
+  rstatix::t_test(value ~ outcome) 
+
+
+stat.test <-add_y_position(stat.test)
+
+ b <- b +
+  stat_pvalue_manual(stat.test, label = "p.adj.signif", tip.length =0) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) 
+b
+
+
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_08_29_01_23/scatter11.png", b, width =6.3, height=4.2)
+ 
+```
+
+
+
+## exp data
+```{r}
+
+fetchdataexp <- function(seurat_obj, x,  x_name) {
+  for (i in 1:length(x))
+  {
+    log_data <- FetchData(seurat_obj, x )
+    log_data_exp <- data.frame((sapply(log_data, expm1)))
+    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
+    log_data_exp$x_meanlog <- (log_data_exp$x_meanlog)
+    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
+    log_data_exp$sample <- rownames(log_data)
+    
+    return(log_data_exp)
+  }
+}
+MHC_1_Rasa <- fetchdataexp(Bi_seurat_md_na_tumor_subset_ccRCC, features_MHC_1_classical, "MHC_1")
+MHC_2_Rasa <- fetchdataexp(Bi_seurat_md_na_tumor_subset_ccRCC, features_MHC_2_classical,  "MHC_2")
+
+```
+
+```{r}
+fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,	
+                                           MHC_2_Rasa), by = 'sample', type = 'full')
+
+fetchdata_all1_Rasa <- fetchdata_all_Rasa
+Bi_seurat_md_na_tumor_subset_ccRCC_meta_data <- Bi_seurat_md_na_tumor_subset_ccRCC@meta.data
+
+Bi_seurat_md_na_tumor_subset_ccRCC_meta_data$sample <- rownames(Bi_seurat_md_na_tumor_subset_ccRCC_meta_data)
+
+fetchdata_all1_Rasa2 <- left_join(x = Bi_seurat_md_na_tumor_subset_ccRCC_meta_data, 
+                               y = fetchdata_all1_Rasa, 
+                               by = "sample")
+
+```
+
+## sample wise plotting
+```{r}
+
+fetchdata_all_T_StemISG_sabioN6 <- aggregate(  MHC_1 ~ pre_post + outcome + sample_id, fetchdata_all1_Rasa2, "mean")
+fetchdata_all_T_StemISG_sabioN7 <- aggregate(  MHC_2 ~ pre_post + outcome + sample_id , fetchdata_all1_Rasa2, "mean")
+
+fetchdata_all_T_StemISG_sabioN8 <- aggregate(  normalized_CD8_totalcells ~ pre_post + outcome + sample_id , fetchdata_all1_Rasa2, "mean")
+##MHC
+fetchdata_all_T_Stem_A <- cbind(fetchdata_all_T_StemISG_sabioN6, fetchdata_all_T_StemISG_sabioN7[4], fetchdata_all_T_StemISG_sabioN8[4])
+##other signals
+
+fetchdata_all_T_Stem_A_log <- log1p(fetchdata_all_T_Stem_A[,4:5])
+
+fetchdata_all_T_Stem_A_log <- cbind(fetchdata_all_T_Stem_A[1:3], fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A[6])
+
+fetchdata_all_T_Stem_A_log$pre_post <- factor (fetchdata_all_T_Stem_A_log$pre_post, levels = c ("Pre", "Post" ))
+
+###############################################
+
+Z <- ggscatter(fetchdata_all_T_Stem_A_log, x = "normalized_CD8_totalcells", y = "MHC_1",  color = "pre_post", add = "reg.line" , 
+          conf.int = TRUE,  
+          palette = mycolors  ,
+           label.x.npc = "left", cor.coef = TRUE, cor.coeff.args = list(method = "spearman",  label.x = 0.05, label.y = 4, color = "black",label.sep='\n'), cor.coef.size =8, star.plot.lwd = 20, repel = TRUE,  facet.by = c("pre_post") ) + guides(color=guide_legend(title="Sub-groups"))  + ylab("Total MHC_1") + xlab("Normalized T cell abundance") + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+theme(axis.text.y=element_text(size=50)) + theme(legend.title = element_text(size=50))+
+  theme(legend.text = element_text(size=50)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none") + 
+  geom_label_repel(aes(label = sample_id),
+                  box.padding   = 0.35, 
+                  point.padding = 0.5,
+                  segment.color = 'black', size = 4) +
+  theme_classic() +geom_point(aes(color=pre_post)) + theme(legend.position = "none") +
+  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "none")
+
+Z
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_07_01_03_22/scatter10CD8.png", Z,  width =9, height= 4.5)
+
+
+##########################################
+
+
+
+fetchdata_all_T_Stem_A_log_melt <- melt(fetchdata_all_T_Stem_A_log)
+fetchdata_all_T_Stem_A_log_T <- filter(fetchdata_all_T_Stem_A_log_melt, fetchdata_all_T_Stem_A_log_melt$variable == "normalized_CD8_actual_totalcells")
+
+g <- ggbarplot(fetchdata_all_T_Stem_A_log_T, "outcome", "value",
+  fill = "outcome", color = "outcome", palette = "Paired",
+  label = FALSE, lab.col = "white", lab.pos = "in", 
+  position = position_stack()) + ylab("Normalized CD8T cell abundance") + xlab(NULL)+theme(legend.position = "top", 
+               legend.text = element_text(size = 10))  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2))
+g
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_07_01_03_22/scattercd8T.png", g,  width =6.5, height= 5.5)
+
+```
