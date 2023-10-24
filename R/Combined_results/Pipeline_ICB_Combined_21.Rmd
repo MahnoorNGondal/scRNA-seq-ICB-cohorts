@@ -1,0 +1,1603 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the tissues 
+```{r}
+
+# seurat_tiss_nonimmune_epi_tumor_subset <- readRDS( "/mctp/share/users/gondal/01_scHLA/03_output/Lung_Maynard/version_08_12_30_22/seurat_tiss_nonimmune_epi_tumor_subset.RDS")
+seurat_MBM_Christopher_m_epi_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Christopher/version_02_29_12_22/seurat_MBM_Christopher_m_epi_subset.RDS")
+
+
+seurat_BCC_SCC_tumor_subset_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/BCC_York/version_02_01_01_22/seurat_BCC_SCC_tumor_subset_subset.RDS")
+seurat_Arnon_data_metadata_M_mel_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/melanoma_Arnon/version_08_01_01_23/seurat_Arnon_data_metadata_M_mel_subset2.RDS")
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/breast_bassez/version_06_12_30_22/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset.RDS")
+seurat_Liver_seurat_set_1_2_epi_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Liver_Ma/version_04_30_12_22/seurat_Liver_seurat_set_1_2_epi_subset.RDS")
+Bi_seurat_md_na_tumor_subset_ccRCC <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_06_01_02_22/Bi_seurat_md_na_tumor_subset_ccRCC.RDS")
+
+
+merged_tissue_cluster <- merge(seurat_MBM_Christopher_m_epi_subset, y = c(seurat_BCC_SCC_tumor_subset_subset, 
+                                                                      seurat_Arnon_data_metadata_M_mel_subset, 
+                                                                      seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset, 
+                                                                      seurat_Liver_seurat_set_1_2_epi_subset, 
+                                                                      Bi_seurat_md_na_tumor_subset_ccRCC), 
+                      add.cell.ids = c("MBM", "BCC", "Melanoma", "Breast", "Liver", "Kidney"), 
+                      project = "ICI")
+
+#merged_tissue_cluster$check <- ifelse(is.na(merged_tissue_cluster$Cancer_type) == TRUE, "check_fail", merged_tissue_cluster$Cancer_type)
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Cancer_type == "Melanoma_derived_brain_metastases", "MBM", 
+                                                   merged_tissue_cluster$Cancer_type)
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Study_name == "Yost", "BCC", 
+                                                   merged_tissue_cluster$Cancer_type_update)
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Cancer_type_update == "Melanoma", "Mel", 
+                                                   merged_tissue_cluster$Cancer_type_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(is.na(merged_tissue_cluster$outcome) == TRUE, "Not_app", merged_tissue_cluster$outcome)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "ICB_PR", "PR", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "ICB_SD", "SD", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "Not_app", "n/a", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "No", "NR", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "Post-ICI (resistant)", "Resis", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "Yes", "R", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster$outcome_update <- ifelse(merged_tissue_cluster$outcome_update == "Untreated", "UT", merged_tissue_cluster$outcome_update)
+
+merged_tissue_cluster@meta.data <- dplyr::rename(merged_tissue_cluster@meta.data , c(Outcome = outcome_update) )
+
+merged_tissue_cluster$Combined_outcome <- ifelse(merged_tissue_cluster$Outcome == "PR"  |
+                                                   merged_tissue_cluster$Outcome == "R" |
+                                                   merged_tissue_cluster$Outcome == "SD", "Favourable", merged_tissue_cluster$Outcome)
+
+merged_tissue_cluster$Combined_outcome <- ifelse(merged_tissue_cluster$Outcome == "NR" |
+                                                   merged_tissue_cluster$Outcome == "Resis" , "Unfavourable", merged_tissue_cluster$Combined_outcome)
+
+
+# saveRDS(merged_tissue_cluster, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_01_31_12_22/merged_tissue_cluster.RDS")
+# merged_tissue_cluster <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_01_31_12_22/merged_tissue_cluster.RDS")
+
+# merged_tissue_cluster <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Tabula_Sapiens/version_45_12_21_22/merged_tissue_cluster.RDS")
+merged_tissue_cluster_UT_na <- subset(merged_tissue_cluster, subset = Combined_outcome != "UT")
+merged_tissue_cluster_UT_na <- subset(merged_tissue_cluster_UT_na, subset = Combined_outcome != "n/a")
+merged_tissue_cluster_UT_na <- subset(merged_tissue_cluster_UT_na, subset = Combined_outcome != "NE")
+merged_tissue_cluster_UT_na <- subset(merged_tissue_cluster_UT_na, subset = Combined_outcome != "E")
+
+# saveRDS(merged_tissue_cluster, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_04_02_01_23/merged_tissue_cluster.RDS")
+merged_tissue_cluster <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_04_02_01_23/merged_tissue_cluster.RDS")
+
+seurat_melanoma_joanna <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_04_02_01_23/seurat_melanoma_joanna.RDS")
+seurat_melanoma_joanna$sample_id_pre_post <- paste0(seurat_melanoma_joanna$sample_id, "_",
+                                                    seurat_melanoma_joanna$pre_post)
+
+seurat_melanoma_joanna$Study_name <- "Pozniak"
+seurat_melanoma_joanna_md <- seurat_melanoma_joanna@meta.data
+
+seurat_melanoma_joanna_counts <- seurat_melanoma_joanna@assays$RNA@counts
+seurat_melanoma_joanna_seurat <- CreateSeuratObject(seurat_melanoma_joanna_counts)
+seurat_melanoma_joanna_seurat <- AddMetaData(seurat_melanoma_joanna_seurat, 
+                                             seurat_melanoma_joanna_md)
+
+merged_tissue_cluster_update <- merge(merged_tissue_cluster, y = c(seurat_melanoma_joanna_seurat), 
+                      add.cell.ids = c("previous", "Mel"), 
+                      project = "ICI")
+
+
+```
+
+
+## data quality checks
+```{r}
+merged_tissue_cluster_update <- SetIdent(merged_tissue_cluster_update, value = merged_tissue_cluster_update@meta.data$Study_name  )
+
+merged_tissue_cluster_update <- PercentageFeatureSet(merged_tissue_cluster_update, "^MT-", col.name = "percent.mito")
+merged_tissue_cluster_update <- PercentageFeatureSet(merged_tissue_cluster_update, "^RP[SL]", col.name = "percent.ribo")
+
+feats <- c("nFeature_RNA", "nCount_RNA", "percent.mito")
+VlnPlot(merged_tissue_cluster_update, group.by = "Study_name", features = feats, pt.size = 0, ncol = 3) +
+    NoLegend()
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/vln2.png", width = 15, height=10)
+
+FeatureScatter(merged_tissue_cluster_update, "nCount_RNA", "nFeature_RNA", group.by = "Study_name", pt.size = 0.5)
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/FS2.png", width = 15, height=10)
+
+### Filtering
+selected_c <- WhichCells(merged_tissue_cluster_update, expression = nFeature_RNA >= 200)
+selected_f <- rownames(merged_tissue_cluster_update)[Matrix::rowSums(merged_tissue_cluster_update) > 3]
+
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update, features = selected_f, cells = selected_c)
+dim(merged_tissue_cluster_update_filt)
+
+selected_mito <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.mito < 20)
+selected_ribo <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.ribo > 5)
+
+# and subset the object to only keep those cells
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_mito)
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_ribo)
+
+
+## plot filtered data
+feats <- c("nFeature_RNA", "nCount_RNA", "percent.mito")
+VlnPlot(merged_tissue_cluster_update_filt, group.by = "Study_name", features = feats, pt.size =0, ncol = 3) +
+    NoLegend()
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/vln1afterfilter2.png", width = 15, height=10)
+```
+
+## normalization - 1 log transformation
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+merged_tissue_cluster_update_filt <- seurat_analysis(merged_tissue_cluster_update_filt)
+
+saveRDS(merged_tissue_cluster_update_filt, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/merged_tissue_cluster_update_filt.RDS")
+```
+
+# individual analysis for doublet finder
+```{r}
+
+merged_tissue_cluster_update_filt <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/merged_tissue_cluster_update_filt.RDS")
+
+Alvarez_Breckenridge_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Alvarez_Breckenridge")
+Alvarez_Breckenridge_seurat <- seurat_analysis(Alvarez_Breckenridge_seurat)
+
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Alvarez_Breckenridge_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Alvarez_Breckenridge_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Alvarez_Breckenridge_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Alvarez_Breckenridge_seurat <- doubletFinder_v3(Alvarez_Breckenridge_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Alvarez_Breckenridge_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Alvarez_Breckenridge_seurat.RDS")
+
+########################################################################################
+
+Bassez_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Bassez")
+Bassez_seurat <- seurat_analysis(Bassez_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Bassez_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Bassez_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Bassez_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Bassez_seurat <- doubletFinder_v3(Bassez_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Bassez_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Bassez_seurat.RDS")
+
+########################################################################################
+
+Bi_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Bi")
+Bi_seurat <- seurat_analysis(Bi_seurat)
+
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Bi_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Bi_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Bi_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Bi_seurat <- doubletFinder_v3(Bi_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Bi_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Bi_seurat.RDS")
+
+########################################################################################
+
+Jerby_Arnon_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Jerby_Arnon")
+Jerby_Arnon_seurat <- seurat_analysis(Jerby_Arnon_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Jerby_Arnon_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Jerby_Arnon_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Jerby_Arnon_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Jerby_Arnon_seurat <- doubletFinder_v3(Jerby_Arnon_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Jerby_Arnon_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Jerby_Arnon_seurat.RDS")
+
+########################################################################################
+
+Ma_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Ma")
+Ma_seurat <- seurat_analysis(Ma_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Ma_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Ma_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Ma_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Ma_seurat <- doubletFinder_v3(Ma_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Ma_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Ma_seurat.RDS")
+
+########################################################################################
+
+Pozniak_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Pozniak")
+Pozniak_seurat <- seurat_analysis(Pozniak_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Pozniak_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Pozniak_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Pozniak_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Pozniak_seurat <- doubletFinder_v3(Pozniak_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Pozniak_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Pozniak_seurat.RDS")
+
+########################################################################################
+
+Tirosh_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Tirosh")
+Tirosh_seurat <- seurat_analysis(Tirosh_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Tirosh_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Tirosh_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Tirosh_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Tirosh_seurat <- doubletFinder_v3(Tirosh_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Tirosh_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Tirosh_seurat.RDS")
+
+########################################################################################
+
+Yost_seurat <- subset(merged_tissue_cluster_update_filt, 
+                                      subset = Study_name == "Yost")
+Yost_seurat <- seurat_analysis(Yost_seurat)
+
+# DF
+sweep.res.list_breast_TNB <- paramSweep_v3(Yost_seurat, PCs = 1:20, sct = FALSE)
+sweep.stats_breast_TNB <- summarizeSweep(sweep.res.list_breast_TNB, GT = FALSE)
+bcmvn_breast_TNB <- find.pK(sweep.stats_breast_TNB)
+
+
+ggplot(bcmvn_breast_TNB, aes(pK, BCmetric, group = 1)) +
+  geom_point() +
+  geom_line()
+
+
+pK <- bcmvn_breast_TNB %>%
+  filter(BCmetric == max(BCmetric)) %>%
+  select(pK)
+
+pK <- as.numeric(as.character(pK[[1]]))
+
+annotations <- Yost_seurat@meta.data$sample_id_pre_post
+homotypic.prop <- modelHomotypic(annotations)           ## ex: annotations <- seu_kidney@meta.data$ClusteringResults
+
+
+nExp_poi <- round(0.01*nrow(Yost_seurat@meta.data))  ## Assuming 7.5% doublet formation rate - tailor for your dataset
+nExp_poi.adj <- round(nExp_poi*(1-homotypic.prop))
+
+## Run DoubletFinder with varying classification stringencies ----------------------------------------------------------------
+Yost_seurat <- doubletFinder_v3(Yost_seurat,
+                               PCs = 1:20,
+                               pN = 0.25,
+                               pK = 0.21,
+                               nExp = nExp_poi,
+                               reuse.pANN = FALSE,
+                               sct = FALSE)
+
+saveRDS(Yost_seurat, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Yost_seurat.RDS")
+
+########################################################################################
+
+```
+
+
+## using dublet finder - waiting for jin to install spam on r studio
+```{r}
+
+Alvarez_Breckenridge_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Alvarez_Breckenridge_seurat.RDS")
+Bassez_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Bassez_seurat.RDS")
+Bi_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Bi_seurat.RDS")
+Jerby_Arnon_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Jerby_Arnon_seurat.RDS")
+Ma_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Ma_seurat.RDS")
+Pozniak_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Pozniak_seurat.RDS")
+Tirosh_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Tirosh_seurat.RDS")
+Yost_seurat <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Yost_seurat.RDS")
+
+
+Alvarez_Breckenridge_seurat@meta.data <- dplyr::rename(Alvarez_Breckenridge_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_50) )
+Bassez_seurat@meta.data <- dplyr::rename(Bassez_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_642) )
+Bi_seurat@meta.data <- dplyr::rename(Bi_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_61) )
+Jerby_Arnon_seurat@meta.data <- dplyr::rename(Jerby_Arnon_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_7) )
+Ma_seurat@meta.data <- dplyr::rename(Ma_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_18) )
+Pozniak_seurat@meta.data <- dplyr::rename(Pozniak_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_94) )
+Tirosh_seurat@meta.data <- dplyr::rename(Tirosh_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_6) )
+Yost_seurat@meta.data <- dplyr::rename(Yost_seurat@meta.data , c(DoubletFinder = DF.classifications_0.25_0.21_35) )
+
+```
+
+
+## removing patients with low number of malignant cells
+```{r}
+## removing samples with less than 20 cells
+merged_filtered_tissue_cluster <- merge(Alvarez_Breckenridge_seurat, y = c(Bassez_seurat, 
+                                                                      Bi_seurat, 
+                                                                      Jerby_Arnon_seurat, 
+                                                                      Ma_seurat, 
+                                                                      Pozniak_seurat,
+                                                                  Tirosh_seurat,
+                                                                  Yost_seurat), 
+                      add.cell.ids = c("MBM", "Breast", "Kidney", "Melanoma", "Liver", "Melanoma2", "Melanoma3", "BCC"), 
+                      project = "ICI")
+
+merged_filtered_tissue_cluster <- seurat_analysis(merged_filtered_tissue_cluster)
+
+saveRDS(merged_filtered_tissue_cluster, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_2DF.RDS")
+
+merged_filtered_tissue_cluster_md <- merged_filtered_tissue_cluster@meta.data
+
+merged_filtered_tissue_cluster_md$logUMI <- log(merged_filtered_tissue_cluster_md$nCount_RNA)
+
+  b <- ggboxplot(merged_filtered_tissue_cluster_md, x = "DoubletFinder", y = "logUMI", add = "none", fill = "DoubletFinder", palette = mycols)    + ylab("log nCount_RNA")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 10)) + theme(text = element_text(size = 15))  + theme(legend.position = "none")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + facet_wrap(~Study_name, nrow  = 1)
+b
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/DF.png",  width =13, height=4)
+
+ggdensity(merged_filtered_tissue_cluster_md, x = "nCount_RNA",
+   add = "mean", rug = TRUE,
+   fill = "DoubletFinder", palette = c("#00AFBB", "#E7B800", "grey", "red")) +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+theme(axis.text.y=element_text(size=50)) + theme(legend.title = element_text(size=50))+
+  theme(legend.text = element_text(size=50)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none")  +
+  theme_classic() + theme(legend.position = "none") +
+  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top")  + 
+       theme(axis.text.x=element_text(size=15, angle=0,hjust=0.5,vjust=0.2))+
+  scale_fill_manual(values = c("#00AFBB", "#E7B800", "grey", "red"))+ xlab("cell type specific\nlog1p expression")   + guides(fill=guide_legend(title=NULL))
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/Tabula_Sapiens/version_107_05_19_23/density.png", width = 4.5, height=4)
+
+##########################################################################
+
+merged_filtered_tissue_cluster_sig <- subset(merged_filtered_tissue_cluster, 
+                                             DoubletFinder == "Singlet")
+
+
+merged_filtered_tissue_cluster_sig_md <- merged_filtered_tissue_cluster_sig@meta.data
+merged_filtered_tissue_cluster_sig_md_subset <- merged_filtered_tissue_cluster_sig_md[merged_filtered_tissue_cluster_sig_md$sample_id_pre_post %in% names(which(table(merged_filtered_tissue_cluster_sig_md$sample_id_pre_post) >= 20)), ]
+
+merged_filtered_tissue_cluster_sig$enough_cells <- ifelse(merged_filtered_tissue_cluster_sig$sample_id_pre_post %in% merged_filtered_tissue_cluster_sig_md_subset$sample_id_pre_post, "enough", "not_enough")
+
+merged_filtered_tissue_cluster_sig <-  subset(x = merged_filtered_tissue_cluster_sig, subset = enough_cells == "enough")
+
+merged_filtered_tissue_cluster_sig <- seurat_analysis(merged_filtered_tissue_cluster_sig)
+
+saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig_2DF.RDS")
+
+merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig_2DF.RDS")
+```
+
+## umaps for the combined data
+```{r}
+
+
+p1 <- DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "Study_name", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('ICB-treated cancer studies: 8'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+  labs(color = "Study_name")  +theme(legend.position = "right", 
+               legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
+# +
+#   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/umap_studyname.png",  width =8, height=5)
+
+
+p2 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "Cancer_type_update", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('ICB-treated cancer types: 9'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+  labs(color = "Cancer_type")  +theme(legend.position = "right", 
+               legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
+# +
+#   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/umap_Cancer_type_update.png",  width =8, height=5)
+
+
+p3 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "pre_post", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('Pre and post patients'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+  labs(color = "pre_post")  +theme(legend.position = "right", 
+               legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
+# +
+#   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/pre_post.png",  width =8, height=5)
+
+p4 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "Outcome", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('Pre and post patients'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+  labs(color = "Outcome")  +theme(legend.position = "right", 
+               legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
+# +
+#   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/Outcome.png",  width =8, height=5)
+
+
+g <- grid.arrange(p1, p2, p3, p4, ncol = 2)
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/uamps.png", g, width =15, height=10)
+```
+## piecharts
+```{r}
+merged_filtered_tissue_cluster_sig_md <- merged_filtered_tissue_cluster_sig@meta.data
+
+merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(sample_id_pre_post == sample_id_pre_post) ~ Study_name + sample_id_pre_post, merged_filtered_tissue_cluster_sig_md, length)$Study_name))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 15))+
+  geom_text(aes(label = pct) , color = "white",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Patients"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "# Patients")
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/piechartpatient.png", width =7, height=7)
+  
+  ######################
+  
+merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Study_name == Study_name) ~  Study_name, merged_filtered_tissue_cluster_sig_md, length)))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(V1) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Study_name)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie2 <-  ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Study_name)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 15))+
+  geom_text(aes(label = pct) , color = "white",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Malignant cells"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "# Patients")
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/piechartCELLS.png", width =7, height=7)
+  
+  #######################
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(pre_post == pre_post) ~  pre_post, merged_filtered_tissue_cluster_sig_md, length)))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(V1) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(pre_post)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie3 <-   ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = pre_post)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 15))+
+  geom_text(aes(label = pct) , color = "white",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# pre_post"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "# Patients")
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/piechartpre_postCELLS.png", width =7, height=7)
+  
+  ######################
+  
+  
+    merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Outcome == Outcome) ~  Outcome, merged_filtered_tissue_cluster_sig_md, length)))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(V1) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Outcome)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+ pie4 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Outcome)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 15))+
+  geom_text(aes(label = pct) , color = "white",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Outcome"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "# Patients")
+ pie4
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/piechartOutcomeCELLS.png", width =7, height=7)
+
+```
+
+
+## viewing the from quality analysis
+```{r}
+
+merged_filtered_tissue_cluster_sig_md <- merged_filtered_tissue_cluster_sig@meta.data
+
+merged_filtered_tissue_cluster_sig_md %>% 
+  	ggplot(aes(x=Study_name, fill=Study_name)) + 
+  	geom_bar() +
+  	theme_classic() +
+  	theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1)) +
+  	theme(plot.title = element_text(hjust=0.5, face="bold")) +
+  	ggtitle("NCells")
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/CELLs.png", width =5, height=3.5)
+
+
+merged_filtered_tissue_cluster_sig_md %>% 
+  	ggplot(aes(color=Study_name, x=nCount_RNA, fill= Study_name)) + 
+  	geom_density(alpha = 0.2) + 
+  	scale_x_log10() + 
+  	theme_classic() +
+  	ylab("Cell density") +
+  	geom_vline(xintercept = 500)
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/nCount_RNA.png", width =5, height=3.5)
+
+
+merged_filtered_tissue_cluster_sig_md %>% 
+  	ggplot(aes(color=Study_name, x=nFeature_RNA, fill= Study_name)) + 
+  	geom_density(alpha = 0.2) + 
+  	theme_classic() +
+  	scale_x_log10() + 
+  	geom_vline(xintercept = 300)
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/nFeature_RNA.png", width =5, height=3.5)
+
+
+merged_filtered_tissue_cluster_sig_md %>% 
+  	ggplot(aes(color=Study_name, x=percent.mito, fill=Study_name)) + 
+  	geom_density(alpha = 0.2) + 
+  	scale_x_log10() + 
+  	theme_classic() +
+  	geom_vline(xintercept = 20)
+
+ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/percent.mito.png", width =5, height=3.5)
+
+# 
+# merged_filtered_tissue_cluster_sig_md %>% 
+#   	ggplot(aes(x=nCount_RNA, y=nFeature_RNA, color=percent.mito)) + 
+#   	geom_point() + 
+# 	scale_colour_gradient(low = "gray90", high = "black") +
+#   	stat_smooth(method=lm) +
+#   	scale_x_log10() + 
+#   	scale_y_log10() + 
+#   	theme_classic() +
+#   	geom_vline(xintercept = 500) +
+#   	geom_hline(yintercept = 250) +
+#   	facet_wrap(~Study_name)
+# 
+#  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/piechartpre_postCELLS.png", width =7, height=7)
+
+
+VlnPlot(merged_filtered_tissue_cluster_sig_md, group.by = "Study_name", features = feats, pt.size =0, ncol = 3) +
+    NoLegend()
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/vln1afterfilter2.png", width =5, height=3.5)
+```
+## Looking at markers
+
+```{r}
+
+Malignant <- c("EPCAM",  "KRT8", "KRT18", "KRT19", "CDH1",  "CA125", "B2M", "D133", "CD44", "ALDH1A1",  "CD24")
+Epithelial_cell <- c("CDH1", "MYLK", "ANKRD30A", "ABCA13", "ABCB10", "ADGB", "SFTPB", "SFTPC")
+T_cell <- c(	"CD3D", "CD3G", "CD3E")
+B_cell <- c("CD19", "MS4A1", "BANK1", "BLK", "IRF8", "ABCB4")
+# Macro_Mono_DC <- c()
+
+
+features_M <- list("Malignant" = c(Malignant),  T_cell = c(T_cell),  "B_cell" = c(B_cell))
+
+merged_filtered_tissue_cluster_sig$Study_name_cancer <- paste0(merged_filtered_tissue_cluster_sig$Study_name,
+                                                               ":", merged_filtered_tissue_cluster_sig$Cancer_type_update)
+
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$Study_name_cancer)
+
+merged_filtered_tissue_cluster_sig@active.ident <- factor(merged_filtered_tissue_cluster_sig@active.ident,
+                                                           levels=c( "Alvarez_Breckenridge:MBM", "Tirosh:Mel",  "Jerby_Arnon:Mel", "Pozniak:Mel", "Bassez:ER+", "Bassez:HER2+", "Bassez:TNBC", "Ma:HCC" , "Ma:iCCA", "Yost:BCC", "Bi:ccRCC"))
+
+
+DotPlot(merged_filtered_tissue_cluster_sig, features=features_M, dot.scale = 8)+RotatedAxis()+theme(axis.text.x=element_text(size=14),axis.text.y=element_text(size=14))  + xlab(NULL) +  ylab(NULL)  + 
+    theme(axis.text.x = element_text(angle=90)) + guides(size = guide_legend(title="Percent\nExpressed")) +
+guides(color = guide_colorbar( title = 'Average\nExpression',  legend.title=element_text(size=4)))   + theme(axis.title.x = element_blank(),
+          axis.title.y = element_blank()) +theme(axis.text.x=element_text(size=14))+theme(axis.text.y=element_text(size=14)) +theme(legend.title = element_text(size=14))+
+  theme(legend.text = element_text(size=14)) + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/DOTPLOT_markers.png", width = 8.5, height=4)
+
+
+```
+
+## Features
+```{r}
+HALLMARK <- msigdbr(species="Homo sapiens", category="H")
+
+HALLMARK_INTERFERON_GAMMA_RESPONSE <- HALLMARK[grep("HALLMARK_INTERFERON_GAMMA_RESPONSE", HALLMARK$gs_name), ]
+features_HALLMARK_INTERFERON_GAMMA_RESPONSE <- unique(HALLMARK_INTERFERON_GAMMA_RESPONSE$human_gene_symbol)
+
+# download data from MsigDB
+cgp_gene_sets = msigdbr(species = "Homo sapiens", category = "C2")
+KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION") 
+features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- unique(KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION$human_gene_symbol)
+
+WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE") 
+features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- unique(WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE$human_gene_symbol)
+
+features_IMMUNO_proteasom <- c("PSMB8", "PSMB9", "PSME1", "PSME2", "PSMB10")
+```
+
+
+
+## heatmap of signatures
+```{r}
+
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$pre_post)
+
+merged_filtered_tissue_cluster_sig@active.ident <- factor(merged_filtered_tissue_cluster_sig@active.ident,
+                                                           levels=c( "Pre", "Post"))
+
+merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig, subset = Combined_outcome != "UT")
+merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "n/a")
+merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "NE")
+merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "E")
+
+merged_filtered_tissue_cluster_sig_UT_na <- ScaleData(merged_filtered_tissue_cluster_sig_UT_na, features = rownames(merged_filtered_tissue_cluster_sig_UT_na))
+
+merged_filtered_tissue_cluster_sig_UT_na <- SetIdent(merged_filtered_tissue_cluster_sig_UT_na, value = merged_filtered_tissue_cluster_sig_UT_na@meta.data$sample_id)
+
+fetchdata <- function(seurat_obj, x,  x_name) {
+  for (i in 1:length(x))
+  {
+    log_data <- FetchData(seurat_obj, x )
+    log_data_exp <- data.frame((sapply(log_data, expm1)))
+    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
+    log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog)
+    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
+    log_data_exp$sample <- rownames(log_data)
+    
+    return(log_data_exp)
+  }
+}
+
+
+MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
+MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
+Interferon_gamma_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_HALLMARK_INTERFERON_GAMMA_RESPONSE,  "IFN_g")
+Antigen_processing_and_presentation_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION,  "APM")
+Immuno_proteosome_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_IMMUNO_proteasom,  "IM")
+Immuno_Cancer_immunotherapy <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE,  "C2_ICI")
+
+
+fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,
+                                          MHC_2_Rasa,
+                                          Interferon_gamma_Rasa,
+                                          Antigen_processing_and_presentation_Rasa,
+                                          Immuno_proteosome_Rasa,
+                                          Immuno_Cancer_immunotherapy), by = 'sample', type = 'full')
+
+fetchdata_all1_Rasa <- fetchdata_all_Rasa
+merged_tissue_cluster_UT_na_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
+
+merged_tissue_cluster_UT_na_meta_data$sample <- rownames(merged_tissue_cluster_UT_na_meta_data)
+
+fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_UT_na_meta_data, 
+                               y = fetchdata_all1_Rasa, 
+                               by = "sample")
+
+fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "Study_name", "Cancer_type_update", "pre_post", "Outcome",  
+                                                          "MHC_1", "MHC_2", "IFN_g", 
+                                                        "APM",
+                                                        "IM", 
+                                                        "C2_ICI")
+]
+
+
+
+
+rownames(fetchdata_all1_Rasa2_geneset) <- fetchdata_all1_Rasa2_geneset$sample
+fetchdata_all1_Rasa2_geneset[1] <- NULL
+
+scale_data_subset_df_merge_sort <- fetchdata_all1_Rasa2_geneset[with(fetchdata_all1_Rasa2_geneset, order( Combined_outcome,  MHC_1, Study_name)),]
+
+scale_data_subset_df_merge_remove <- scale_data_subset_df_merge_sort[,-c(1:5)]
+scale_data_subset_df_merge_remove <- scale(scale_data_subset_df_merge_remove)
+scale_data_subset_df_merge_matrix <- t((scale_data_subset_df_merge_remove))
+
+# 
+# gene_info <- as.data.frame(imp_features)
+# gene_info$Sig. <- "MHC_1"
+# gene_info$Sig.[4:40] <- "MHC_2"
+# gene_info$Sig.[11:40] <- "non_classical_MHC"
+# gene_info$Sig.[15:40] <- "TF"
+# gene_info$Sig.[27:40] <- "APM"
+# gene_info$Sig.[34:40] <- "Markers"
+# gene_info$Sig.[36:40] <- "IP"
+# row.names(gene_info) <- gene_info$imp_features
+# gene_info[1] <- NULL
+
+down.sample_meta_data_specific <- data.frame(rownames(scale_data_subset_df_merge_sort),   scale_data_subset_df_merge_sort$Combined_outcome,  scale_data_subset_df_merge_sort$Study_name, scale_data_subset_df_merge_sort$pre_post,  scale_data_subset_df_merge_sort$Cancer_type_update)
+down.sample_meta_data_specific[1] <- NULL
+colnames(down.sample_meta_data_specific) <- c("Response",  "Study_name",  "Timepoint", "Cancer")
+# down.sample_meta_data_specific$Timepoint <- factor (down.sample_meta_data_specific$Timepoint, levels = c ("Pre", "Post" ))
+
+
+col_fun <- colorRamp2(c( -2,  0, 2),c("#6d79c2", "white", "#d90202"))
+col_fun(seq(-2, 2))
+
+anno <- HeatmapAnnotation(Response = as.matrix((down.sample_meta_data_specific$Response)),
+                          Study_name = as.matrix((down.sample_meta_data_specific$Study_name)),
+                          Timepoint = as.matrix((down.sample_meta_data_specific$Timepoint)),
+                          Cancer = as.matrix((down.sample_meta_data_specific$Cancer)))
+
+png(file="/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/all_heatmapnew_47mal6.png", width=450, height=400)
+
+ComplexHeatmap::Heatmap(as.matrix(scale_data_subset_df_merge_matrix), row_dend_reorder = FALSE, show_column_names = FALSE, show_row_names = TRUE,  
+                         row_names_side = "left", row_dend_side = "left",
+                        column_names_side = "top", column_dend_side = "bottom", cluster_rows = FALSE, cluster_columns = FALSE,
+                        top_annotation = anno,
+                        name = "Expression") 
+dev.off()
+
+
+```
+
+
+
+## FetchData log2 normalized
+```{r}
+ 
+fetchdata <- function(seurat_obj, x,  x_name) {
+  for (i in 1:length(x))
+  {
+    log_data <- FetchData(seurat_obj, x )
+    log_data_exp <- data.frame((sapply(log_data, expm1)))
+    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
+    log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog)
+    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
+    log_data_exp$sample <- rownames(log_data)
+    
+    return(log_data_exp)
+  }
+}
+
+
+MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
+MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
+
+
+```
+
+
+```{r}
+fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,
+                                          MHC_2_Rasa), by = 'sample', type = 'full')
+
+fetchdata_all1_Rasa <- fetchdata_all_Rasa
+merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
+
+merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data)
+
+fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data, 
+                               y = fetchdata_all1_Rasa, 
+                               by = "sample")
+
+```
+
+## boxplots with p values
+```{r}
+
+
+fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "sample_id", "Cancer_type", "pre_post", "Outcome",  "Cancer_type_update",
+                                                          "MHC_1", "MHC_2")
+]
+
+
+
+fetchdata_all1_Rasa2_geneset_melt <- melt(fetchdata_all1_Rasa2_geneset)
+# 
+# 
+fetchdata_all1_Rasa2_geneset_melt$pre_post <- factor (fetchdata_all1_Rasa2_geneset_melt$pre_post, levels = c ("Pre", "Post" ))
+
+names(fetchdata_all1_Rasa2_geneset_melt)[names(fetchdata_all1_Rasa2_geneset_melt) == 'variable'] <- 'signature'
+# 
+fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "UT")
+fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "E")
+fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "NE")
+fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "n/a")
+
+ 
+  
+ b <- ggboxplot(fetchdata_all1_Rasa2_geneset_melt, "Combined_outcome", "value", fill = "Combined_outcome", 
+   palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat cancer cell level")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) +
+  scale_fill_manual(values = c("#00AFBB", "#E7B800")) +
+  labs(color = "Response")  +
+  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") +
+  guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL)) 
+ b
+  
+#  
+#   b
+b <- facet(b, facet.by =  c("signature"),  nrow = 4,
+ ncol = 2, scales = "free_y")
+ b
+
+#b <- b + stat_compare_means(label = "p.format",method="t.test")
+ stat.test <- fetchdata_all1_Rasa2_geneset_melt %>%
+  rstatix::group_by(signature) %>%
+  rstatix::t_test(value ~ Combined_outcome)
+
+
+stat.test <-add_y_position(stat.test)
+
+ b <- b +
+  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+b
+ 
+
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type1.png", b, width =7.5, height=6)
+```
+
+
+## exp data
+```{r}
+
+fetchdataexp <- function(seurat_obj, x,  x_name) {
+  for (i in 1:length(x))
+  {
+    log_data <- FetchData(seurat_obj, x )
+    log_data_exp <- data.frame((sapply(log_data, expm1)))
+    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
+    log_data_exp$x_meanlog <- (log_data_exp$x_meanlog)
+    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
+    log_data_exp$sample <- rownames(log_data)
+    
+    return(log_data_exp)
+  }
+}
+MHC_1_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
+MHC_2_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
+
+```
+
+
+```{r}
+fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,	
+                                           MHC_2_Rasa), by = 'sample', type = 'full')
+
+fetchdata_all1_Rasa <- fetchdata_all_Rasa
+merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
+
+merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data)
+
+fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data, 
+                               y = fetchdata_all1_Rasa, 
+                               by = "sample")
+
+```
+
+
+## violin plot
+```{r fig1, fig.height =3.3, fig.width =4}
+
+fetchdata_all_T_StemISG_sabioN6 <- aggregate(  MHC_1 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean")
+fetchdata_all_T_StemISG_sabioN7 <- aggregate(  MHC_2 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean")
+
+# fetchdata_all_T_StemISG_sabioN8 <- aggregate(  normalized_CD8_totalcells ~ pre_post + sample_id  + Cancer_type_update , fetchdata_all1_Rasa2, "mean")
+##MHC
+fetchdata_all_T_Stem_A <- cbind(fetchdata_all_T_StemISG_sabioN6, fetchdata_all_T_StemISG_sabioN7[5])
+##other signals
+
+fetchdata_all_T_Stem_A_log <- log1p(fetchdata_all_T_Stem_A[,5:6])
+
+fetchdata_all_T_Stem_A_log <- cbind(fetchdata_all_T_Stem_A[1:4], fetchdata_all_T_Stem_A_log)
+
+#fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "UT")
+#fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "n/a")
+
+fetchdata_all_T_Stem_A_log$pre_post <- factor (fetchdata_all_T_Stem_A_log$pre_post, levels = c ("Pre", "Post" ))
+
+Z <- ggscatter(fetchdata_all_T_Stem_A_log, x = "MHC_2", y = "MHC_1",  add = "reg.line" , shape = "pre_post",
+          conf.int = TRUE,  
+          palette = mycolors  ,
+           label.x.npc = "left", cor.coef = TRUE, cor.coeff.args = list(method = "spearman" , label.x = 0.01, label.y =3.8, color = "black",label.sep='\n'), cor.coef.size =7, star.plot.lwd = 20, repel = TRUE ) + guides(color=guide_legend(title="Cancer"))  + ylab("Cancer MHC_1") + xlab("Cancer MHC_2") + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+theme(axis.text.y=element_text(size=50)) + theme(legend.title = element_text(size=50))+
+  theme(legend.text = element_text(size=50)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none") +
+  theme_classic() +geom_point(aes(color=Cancer_type_update)) + theme(legend.position = "right") +
+  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "right") 
+
+Z
+
+Z <- facet(Z, facet.by =  c("pre_post"))
+Z
+
+# Z <- facet(Z, facet.by =  c( "Combined_outcome", "pre_post"),  nrow = 3,
+#  ncol = 3, scales = "free_y")
+Z
+
+
+
+
+# mhc only is 9.5 vs 4.5
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/scatter11.png", Z,  width =8, height=4.8)
+
+fetchdata_all_T_Stem_A_sub <- fetchdata_all_T_Stem_A[,-c(2:3)]
+fetchdata_all_T_Stem_A_melt <- melt(fetchdata_all_T_Stem_A_sub)
+
+fetchdata_all_T_Stem_A_melt$pre_post <- factor (fetchdata_all_T_Stem_A_melt$pre_post, levels = c ("Pre", "Post" ))
+
+fetchdata_all_T_Stem_A_melt$Combined_outcome <- factor (fetchdata_all_T_Stem_A_melt$Combined_outcome, levels = c ("Unfavourable", "Favourable" ))
+
+names(fetchdata_all_T_Stem_A_melt)[names(fetchdata_all_T_Stem_A_melt) == 'variable'] <- 'signature'
+
+fetchdata_all_T_Stem_A_melt <- filter(fetchdata_all_T_Stem_A_melt, signature == "MHC_2")
+
+ b <- ggboxplot(fetchdata_all_T_Stem_A_melt, "Combined_outcome", "value", fill = "pre_post", 
+   palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat patient level")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + 
+       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) +
+  scale_fill_manual(values = c("#00AFBB", "#E7B800")) +
+  labs(color = "Response")  +
+  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") +
+  guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL)) 
+ b
+  
+#  
+#   b
+b <- facet(b, facet.by =  c("signature"))
+ b
+
+#b <- b + stat_compare_means(label = "p.format",method="t.test")
+ stat.test <- fetchdata_all1_Rasa2_geneset_melt %>%
+  rstatix::t_test(value ~ Combined_outcome)
+
+
+stat.test <-add_y_position(stat.test)
+
+ b <- b +
+  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
+  scale_y_continuous(expand = expansion(mult = c(0.00, 0.1)))
+b
+ 
+
+
+  #, palette = c("#00AFBB", "#E7B800")
+  b <- ggboxplot(fetchdata_all_T_Stem_A_melt, x = "Combined_outcome", y = "value", palette = mycolors, fill = "pre_post")  + ylab("Total expression\nat patient level")   +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  + 
+       theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1)) +
+  scale_fill_manual(values = c("#00AFBB", "#E7B800"))+ guides(fill=guide_legend(title=NULL)) 
+  b
+#  b
+# b <- facet(b, facet.by =  c("signature"),  nrow = 2,
+#  ncol = 2)
+#  b
+
+stat.test <- fetchdata_all_T_Stem_A_melt %>%
+  rstatix::t_test(value ~ Combined_outcome)
+
+
+stat.test <-add_y_position(stat.test)
+
+ b <- b +
+  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
+  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
+b
+
+
+
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type4.png", b, width =4, height=5)
+```
+
+
+## Rshiny data
+```{r}
+
+saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+
+merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$sample_id_pre_post  )
+
+down.sample <- subset(merged_filtered_tissue_cluster_sig,  downsample = 200)
+
+##################################
+
+Bassez_TNBC_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:TNBC")
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_TNBC_data, slot = "data"))))
+Bassez_TNBC_data <- merge(Bassez_TNBC_data_md, 
+                                   Bassez_TNBC_data, by = "row.names")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:HER2+")
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_HER2_data, slot = "data"))))
+Bassez_HER2_data <- merge(Bassez_HER2_data_md, 
+                                   Bassez_HER2_data, by = "row.names")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:ER+")
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_ER_data, slot = "data"))))
+Bassez_ER_data <- merge(Bassez_ER_data_md, 
+                                   Bassez_ER_data, by = "row.names")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(down.sample , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+Alvarez_Breckenridge_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data <- as.data.frame(t(as.data.frame(GetAssayData(Alvarez_Breckenridge_data, slot = "data"))))
+Alvarez_Breckenridge_data <- merge(Alvarez_Breckenridge_md, 
+                                   Alvarez_Breckenridge_data, by = "row.names")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(down.sample , subset = Study_name_cancer == "Bi:ccRCC")
+Bi_ccRCC_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bi_ccRCC_data, slot = "data"))))
+Bi_ccRCC_data <- merge(Bi_ccRCC_md, 
+                                   Bi_ccRCC_data, by = "row.names")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+Jerby_Arnon_Mel_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Jerby_Arnon_Mel_data, slot = "data"))))
+Jerby_Arnon_Mel_data <- merge(Jerby_Arnon_Mel_md, 
+                                   Jerby_Arnon_Mel_data, by = "row.names")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(down.sample , subset = Study_name_cancer == "Ma:HCC")
+Ma_HCC_md <- Ma_HCC_data@meta.data
+Ma_HCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Ma_HCC_data, slot = "data"))))
+Ma_HCC_data <- merge(Ma_HCC_md, 
+                                   Ma_HCC_data, by = "row.names")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(down.sample , subset = Study_name_cancer == "Ma:iCCA")
+M_iCCA_md <- M_iCCA_data@meta.data
+M_iCCA_data <- as.data.frame(t(as.data.frame(GetAssayData(M_iCCA_data, slot = "data"))))
+M_iCCA_data <- merge(M_iCCA_md, 
+                                   M_iCCA_data, by = "row.names")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Pozniak:Mel")
+Pozniak_Mel_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Pozniak_Mel_data, slot = "data"))))
+Pozniak_Mel_data <- merge(Pozniak_Mel_md, 
+                                   Pozniak_Mel_data, by = "row.names")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Tirosh:Mel")
+Tirosh_Mel_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Tirosh_Mel_data, slot = "data"))))
+Tirosh_Mel_data <- merge(Tirosh_Mel_md, 
+                                   Tirosh_Mel_data, by = "row.names")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(down.sample , subset = Study_name_cancer == "Yost:BCC")
+Yost_BCC_md <- Yost_BCC_data@meta.data
+Yost_BCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Yost_BCC_data, slot = "data"))))
+Yost_BCC_data <- merge(Yost_BCC_md, 
+                                   Yost_BCC_data, by = "row.names")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_14_24_10_23/Yost_BCC_data.csv")
+
+
+
+# data_frames <- list(Bassez_TNBC_data, 
+#                     Bassez_HER2_data, 
+#                     Bassez_ER_data,
+#                     Alvarez_Breckenridge_data,
+#                     Bi_ccRCC_data,
+#                     Jerby_Arnon_Mel_data,
+#                     Ma_HCC_data,
+#                     M_iCCA_data,
+#                     Pozniak_Mel_data,
+#                     Tirosh_Mel_data,
+#                     Yost_BCC_data)
+# 
+# # Find common columns
+# common_cols <- Reduce(intersect, lapply(data_frames, names))
+# 
+# # Combine data frames using common columns
+# combined_df <- data_frames %>%
+#   purrr::reduce(inner_join, by = common_cols)
+# 
+# 
+# saveRDS(merged_filtered_tissue_cluster_sig_md, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_15_24_10_23/merged_filtered_tissue_cluster_sig_md.RDS")
+
+
+```
+
+## R shiny - pseudobulk
+```{r}
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$sample_id_pre_post  )
+
+
+##################################
+
+Bassez_TNBC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:TNBC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_TNBC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data_md <- Bassez_TNBC_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Bassez_TNBC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_TNBC_data_md, by = "sample_id_pre_post")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:HER2+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_HER2_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data_md <- Bassez_HER2_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Bassez_HER2_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_HER2_data_md, by = "sample_id_pre_post")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:ER+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_ER_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data_md <- Bassez_ER_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Bassez_ER_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_ER_data_md, by = "sample_id_pre_post")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Alvarez_Breckenridge_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Alvarez_Breckenridge_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Alvarez_Breckenridge_data_md, by = "sample_id_pre_post")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bi:ccRCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bi_ccRCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bi_ccRCC_data_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data_md <- Bi_ccRCC_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Bi_ccRCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bi_ccRCC_data_md, by = "sample_id_pre_post")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Jerby_Arnon_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Jerby_Arnon_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Jerby_Arnon_Mel_data_md, by = "sample_id_pre_post")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:HCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Ma_HCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Ma_HCC_data_md <- Ma_HCC_data@meta.data
+Ma_HCC_data_md <- Ma_HCC_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Ma_HCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Ma_HCC_data_md, by = "sample_id_pre_post")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:iCCA")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = M_iCCA_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+M_iCCA_data_md <- M_iCCA_data@meta.data
+M_iCCA_data_md <- M_iCCA_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+M_iCCA_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   M_iCCA_data_md, by = "sample_id_pre_post")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Pozniak:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Pozniak_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Pozniak_Mel_data_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data_md <- Pozniak_Mel_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Pozniak_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Pozniak_Mel_data_md, by = "sample_id_pre_post")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Tirosh:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Tirosh_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Tirosh_Mel_data_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data_md <- Tirosh_Mel_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Tirosh_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Tirosh_Mel_data_md, by = "sample_id_pre_post")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Yost:BCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Yost_BCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$sample_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Yost_BCC_data_md <- Yost_BCC_data@meta.data
+Yost_BCC_data_md <- Yost_BCC_data_md %>%
+  distinct(sample_id_pre_post, .keep_all = TRUE)
+
+Yost_BCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Yost_BCC_data_md, by = "sample_id_pre_post")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Yost_BCC_data.csv")
+
+Yost_BCC <- data.table::fread("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Yost_BCC_data.csv")
+```
+
+
