@@ -18,7 +18,7 @@ drive_download(public_file, overwrite = TRUE)
 Yost_BCC <- data.table::fread("Yost_BCC_data.csv")
 gene_names <- colnames(Yost_BCC[,c(2:38207)])
 
-ui <- fluidPage( theme = shinytheme("cerulean"),
+ui <- fluidPage( theme = shinytheme("journal"),
                  titlePanel("Single-cell ICB cohort - Pseudobulk"),
                  sidebarLayout(
                    sidebarPanel(
@@ -37,7 +37,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                    ),
                    mainPanel("Results are being generated - please wait",
                              fluidRow(
-                               splitLayout(style = "border: 1px solid silver:", cellWidths = c("50%", "50%"), 
+                               splitLayout(style = "border: 1px solid silver:", cellWidths = c("30%", "30%"), 
                                            plotOutput("selected_plot"), 
                                            plotOutput("selected_plot2")
                                )
@@ -115,6 +115,8 @@ server <- function(input, output) {
                           "Tirosh_Mel" = Tirosh_Mel, 
                           "Yost_BCC" = Yost_BCC)
     
+    
+
     # Create a plot or visualization using the selected dataframe
     # For example, you can create a boxplot using ggplot2
     
