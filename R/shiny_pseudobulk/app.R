@@ -35,7 +35,7 @@ ui <- fluidPage( theme = shinytheme("cerulean"),
                                                                                      "Yost_BCC")),
                      selectInput( inputId = "gene", label = "Select a gene", choices = c(gene_names)),
                    ),
-                   mainPanel("Results",
+                   mainPanel("Results are being generated - please wait",
                              fluidRow(
                                splitLayout(style = "border: 1px solid silver:", cellWidths = c("50%", "50%"), 
                                            plotOutput("selected_plot"), 
