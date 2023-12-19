@@ -1374,30 +1374,6 @@ Yost_BCC_data <- merge(Yost_BCC_md,
 write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Yost_BCC_data.csv")
 
 
-
-# data_frames <- list(Bassez_TNBC_data, 
-#                     Bassez_HER2_data, 
-#                     Bassez_ER_data,
-#                     Alvarez_Breckenridge_data,
-#                     Bi_ccRCC_data,
-#                     Jerby_Arnon_Mel_data,
-#                     Ma_HCC_data,
-#                     M_iCCA_data,
-#                     Pozniak_Mel_data,
-#                     Tirosh_Mel_data,
-#                     Yost_BCC_data)
-# 
-# # Find common columns
-# common_cols <- Reduce(intersect, lapply(data_frames, names))
-# 
-# # Combine data frames using common columns
-# combined_df <- data_frames %>%
-#   purrr::reduce(inner_join, by = common_cols)
-# 
-# 
-# saveRDS(merged_filtered_tissue_cluster_sig_md, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_15_24_10_23/merged_filtered_tissue_cluster_sig_md.RDS")
-
-
 ```
 
 ## R shiny - pseudobulk
@@ -2026,44 +2002,3 @@ write.csv(data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/versio
 
 
 
-
-CopyKat
-## running copykat
-```{r}
-#change 3 places!
-
-#exp.rawdata <- GetAssayData(seurat_D4_T_2, slot = "counts")
-
-exp.rawdata <- as.matrix(merged_filtered_tissue_cluster_sig@assays$RNA@counts)
-dim(exp.rawdata)
-
-vector_n <- c(colnames(epi_anno3_subset_merge_normal))
-
-copykat.test <- copykat(rawmat=exp.rawdata, id.type="S", ngene.chr=5, win.size=25, KS.cut=0.1, sam.name="test", distance="euclidean",  norm.cell.names="", output.seg="FALSE", plot.genes="TRUE", genome="hg20",n.cores=15)
-
-pred.test <- data.frame(copykat.test$prediction)
-table(pred.test$copykat.pred)
-
-merged_filtered_tissue_cluster_sig@meta.data$copycat.pred <- NULL
-merged_filtered_tissue_cluster_sig@meta.data$copycat.pred <- ifelse(colnames(merged_filtered_tissue_cluster_sig) %in% pred.test$cell.names, pred.test$copykat.pred, merged_filtered_tissue_cluster_sig@meta.data$copycat.pred )
-table(merged_filtered_tissue_cluster_sig$copycat.pred) 
-
-saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/merged_filtered_tissue_cluster_sig.RDS")
-  
-
-
-merged_filtered_tissue_cluster_sig$ID <- paste0(merged_filtered_tissue_cluster_sig$cell_type, "_", merged_filtered_tissue_cluster_sig$copycat.pred)
-
-seurat_Wang_epi <- subset(seurat_Wang, subset = ID != "Epithelial_aneuploid")
-seurat_Wang_epi <- subset(seurat_Wang_epi, subset = ID != "Malignant_diploid")
-seurat_Wang_epi <- subset(seurat_Wang_epi, subset = ID != "Malignant_not.defined")
-
-saveRDS(seurat_Wang, "/mctp/share/users/gondal/01_scHLA/03_output/prostate_tuong/seurat_Wang.RDS")
-  
-  seurat_h5_10_data_thoungetal2_Epi_meta_data <- seurat_h5_10_data_thoungetal2_Epi@meta.data
-  dat <- data.frame(aggregate(cbind(copycat.pred = name) ~ name + copycat.pred + group , seurat_h5_10_data_thoungetal2_Epi_meta_data, length))
-  
-saveRDS(seurat_Wang_epi,"/mctp/share/users/gondal/01_scHLA/03_output/Prostate_Wong/seurat_Wang_epi.RDS")
- 
-seurat_Wang_epi$id <- paste0(seurat_Wang_epi$ID, ":", seurat_Wang_epi$sample_ID)
-```
