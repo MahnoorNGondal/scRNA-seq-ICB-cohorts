@@ -7,18 +7,28 @@ library(shinyFiles)
 library(ggpubr)
 library(rsconnect)
 library(googledrive)
-
+library(stats)
 
 ## download from googledrive
 drive_deauth()
 drive_user()
-public_file <-  drive_get(as_id("1NGGAlgnegsAHdIs4hAk9tWDtMP4Nh237"))
+public_file <-  drive_get(as_id("1PsYMT3koKNGF7Hmo3QYJnosJNNHbp4GO"))
 drive_download(public_file, overwrite = TRUE)
 
 Yost_BCC <- data.table::fread("Yost_BCC_data.csv")
 gene_names <- colnames(Yost_BCC[,c(2:38207)])
 
-ui <- fluidPage( theme = shinytheme("journal"),
+ui <- fluidPage(   fluidRow(
+          h4("For single-cell data: ", a("Search for it", href = "https://drive.google.com/drive/folders/1bntoBZRUUkiBcf7p2wPQZw-fiOZiB15a?ths=true"))
+),
+fluidRow(
+  h4("For Pseudobulk level data: ", a("Search for it", href = "https://drive.google.com/drive/folders/1mWKPFfQV0h0ReEC_p1y8zozH5ocs_2Xn?ths=true"))
+),
+fluidRow(
+  h4("For normalized Pseudobulk level data: ", a("Search for it", href = "https://drive.google.com/drive/folders/14PK_L5GriFYbFD22jWIChqh7apWCpn6d?ths=true"))
+)
+,
+theme = shinytheme("journal"),
                  titlePanel("Single-cell ICB cohort - Pseudobulk"),
                  sidebarLayout(
                    sidebarPanel(
@@ -32,14 +42,16 @@ ui <- fluidPage( theme = shinytheme("journal"),
                                                                                      "Ma_iCCA",
                                                                                      "Pozniak_Mel",
                                                                                      "Tirosh_Mel",
-                                                                                     "Yost_BCC")),
-                     selectInput( inputId = "gene", label = "Select a gene", choices = c(gene_names)),
+                                                                                     "Yost_BCC",
+                                                                                     "Combined_data")),
+                     selectInput( inputId = "gene", label = "Select a gene x", choices = c(gene_names)),
+                     selectInput( inputId = "gene2", label = "Select a gene y", choices = c(gene_names)),
                    ),
                    mainPanel("Results are being generated - please wait",
                              fluidRow(
-                               splitLayout(style = "border: 1px solid silver:", cellWidths = c("30%", "30%"), 
-                                           plotOutput("selected_plot"), 
-                                           plotOutput("selected_plot2")
+                               splitLayout(style = "border: 1px solid silver:", cellWidths = c("40%", "60%"), 
+                                           plotOutput("selected_plot"),  
+                                           plotOutput("selected_plot3")
                                )
                              )
                    
@@ -52,37 +64,41 @@ server <- function(input, output) {
   ## download from googledrive
   drive_deauth()
   drive_user()
-  public_file <-  drive_get(as_id("12P5y7-Khs0ZANcWSadRLhgl24Pqv1JmH"))
+  public_file <-  drive_get(as_id("17Ai7nAvxuTjTGb1rEc_I2Czit2QhOWfO"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1DDFmxKZ_TZk8kKCvr8c0hXGyqKJOCQPZ"))
+  public_file <-  drive_get(as_id("19u74JLwMnH5kY13yWSe36h2SDUbq4KFq"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1gmgqZSxgshzimwS0x8PMJ-1MLoxLT0of"))
+  public_file <-  drive_get(as_id("1KnSoxEppEbu901-I9xEnF0ZKvrAcLhin"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("11M4QFYupfJJ-7-f7HchAaGNejc4zNuQb"))
+  public_file <-  drive_get(as_id("1ktbCU7k4YT7o52Iu9Yt4zYyyDGmhdDMo"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1Et4xZFah-V7YvkRqCxAxoHQogkAG1Hs3"))
+  public_file <-  drive_get(as_id("1WnW1PXXwVJlhzD_mFZ9PEswDSQdcZsGD"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1gl5GPE5O4BIkD_56ql7glf02mqg3lHp6"))
+  public_file <-  drive_get(as_id("11I5tlgV4MJHOK0MZ-dGQPbdFxKbLDOnP"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1lbLOMyrDnutjLJMWiWirizD24NaIe9nx"))
+  public_file <-  drive_get(as_id("1niFMTzRYSbTsUPwod7s0tAa8_vuMx18E"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1y8_qFReTokd4badSv1lZ6y6BoUF7C8_j"))
+  public_file <-  drive_get(as_id("1i-yoOoIadLk_0oWv4h-UJlJL-K4s0iuX"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1etNKOTvfpwlsySjCY57pGMDoSPofTtxl"))
+  public_file <-  drive_get(as_id("1w5uWkvzHWrO_zTmEIPiRWkg7nOV-uaNh"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1nMwQGTp_-7UhiKptc7aBPKEFhITunkGQ"))
+  public_file <-  drive_get(as_id("1OAQUNC1WhQd-OzIiCSMTPzX5X7HU82Qv"))
   drive_download(public_file, overwrite = TRUE)
   
-  public_file <-  drive_get(as_id("1NGGAlgnegsAHdIs4hAk9tWDtMP4Nh237"))
+  public_file <-  drive_get(as_id("1PsYMT3koKNGF7Hmo3QYJnosJNNHbp4GO"))
+  drive_download(public_file, overwrite = TRUE)
+  
+  # combined
+  public_file <-  drive_get(as_id("1vMnULAUN76eQ44cVdrq7zFX-V33Y5bBd"))
   drive_download(public_file, overwrite = TRUE)
   
   
@@ -101,6 +117,9 @@ server <- function(input, output) {
   Yost_BCC <- data.table::fread("Yost_BCC_data.csv")
 
   
+  Combined_data <- data.table::fread("Combined_data.csv")
+  
+  
   
   output$selected_plot <- renderPlot({
     selected_df <- switch(input$selected_df, "Bassez_TNBC" = Bassez_TNBC, 
@@ -113,7 +132,8 @@ server <- function(input, output) {
                           "Ma_iCCA" = M_iCCA, 
                           "Pozniak_Mel" = Pozniak_Mel, 
                           "Tirosh_Mel" = Tirosh_Mel, 
-                          "Yost_BCC" = Yost_BCC)
+                          "Yost_BCC" = Yost_BCC,
+                          "Combined_data" = Combined_data)
     
     
 
@@ -122,13 +142,16 @@ server <- function(input, output) {
     
     selected_df$pre_post <- factor (selected_df$pre_post, levels = c ("Pre", "Post" ))
     
-   ggboxplot(selected_df, y = input$gene, x = "Outcome", fill = "pre_post", palette = "npg",  
-              facet.by = "pre_post") +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
-      theme(legend.text = element_text(size=15)) +   theme_classic() +                                                            # Change font size
+
+    
+   ggboxplot(selected_df, y = input$gene, x = "Combined_outcome", color = "pre_post", palette = "npg") +
+     facet_wrap(~pre_post, scales = "free_y") +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
+      theme(legend.text = element_text(size=15)) +
+      xlab(NULL) +   theme_classic() +                                                            # Change font size
       theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size = 15))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + 
       theme(axis.text.x = element_text( colour = "black")) + 
-      theme(axis.text.y = element_text( colour = "black")) + ggtitle(paste("Study nane - ", selected_df$Study_name_cancer, "      Boxplot"))
+      theme(axis.text.y = element_text( colour = "black")) + ggtitle(paste(  "      Boxplot")) 
     
 
     
@@ -136,7 +159,7 @@ server <- function(input, output) {
   })
   
   
-  output$selected_plot2 <- renderPlot({
+  output$selected_plot3 <- renderPlot({
     selected_df <- switch(input$selected_df, "Bassez_TNBC" = Bassez_TNBC, 
                           "Bassez_HER2" = Bassez_HER2, 
                           "Bassez_ER" = Bassez_ER, 
@@ -147,27 +170,33 @@ server <- function(input, output) {
                           "Ma_iCCA" = M_iCCA, 
                           "Pozniak_Mel" = Pozniak_Mel, 
                           "Tirosh_Mel" = Tirosh_Mel, 
-                          "Yost_BCC" = Yost_BCC)
+                          "Yost_BCC" = Yost_BCC,
+                          "Combined_data" = Combined_data)
     
     # Create a plot or visualization using the selected dataframe
     # For example, you can create a boxplot using ggplot2
     
     selected_df$pre_post <- factor (selected_df$pre_post, levels = c ("Pre", "Post" ))
     
-    ggbarplot(selected_df, y = input$gene, x = "Outcome", fill = "pre_post", palette = "npg",
-              facet.by = "pre_post") +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
-      theme(legend.text = element_text(size=15)) +   theme_classic() +                                                            # Change font size
-      theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size = 15))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
-      theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + 
+    ggscatter(selected_df, x = input$gene, y = input$gene2, add = "reg.line", 
+                   conf.int = TRUE,  
+                   palette = "Paired"  ,
+                   label.x.npc = "left", cor.coef = TRUE, cor.coeff.args = list(method = "spearman", color = "black",label.sep='\n'), cor.coef.size =5, star.plot.lwd = 15, repel = TRUE  ) + 
+      facet_wrap(~pre_post, scales = "free_y") + 
+      guides(color=guide_legend(title="Cancer type")) + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+
+      theme(axis.text.y=element_text(size=50)) + 
+      theme(legend.title = element_text(size=50))+
+      theme(legend.text = element_text(size=50)) +                                                               # Change font size
+      theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none") +
+      theme_classic() +geom_point(aes(color=Study_name_cancer)) + theme(legend.position = "none") +
+      theme_classic()+theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
+      theme(legend.text = element_text(size=15)) +                                                               # Change font size
+      theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size =15))+ 
       theme(axis.text.x = element_text( colour = "black")) + 
-      theme(axis.text.y = element_text( colour = "black")) + ggtitle(paste("Study nane - ", selected_df$Study_name_cancer , "      Barplot"))
-    
-    
-    
-    
+      theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "right")  + ggtitle(paste("      Scatterplot"))  
+  
   })
+  
 }
-
-
 
 shinyApp(ui, server)
