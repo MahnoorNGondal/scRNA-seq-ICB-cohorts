@@ -25,7 +25,6 @@ merged_tissue_cluster <- merge(seurat_MBM_Christopher_m_epi_subset, y = c(seurat
                                                                       seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset, 
                                                                       seurat_Liver_seurat_set_1_2_epi_subset, 
                                                                       Bi_seurat_md_na_tumor_subset_ccRCC), 
-                      add.cell.ids = c("MBM", "BCC", "Melanoma", "Breast", "Liver", "Kidney"), 
                       project = "ICI")
 
 #merged_tissue_cluster$check <- ifelse(is.na(merged_tissue_cluster$Cancer_type) == TRUE, "check_fail", merged_tissue_cluster$Cancer_type)
@@ -863,8 +862,8 @@ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_0
 
 Malignant <- c("EPCAM",  "KRT8", "KRT18", "KRT19", "CDH1",  "CA125", "B2M", "D133", "CD44", "ALDH1A1",  "CD24")
 Epithelial_cell <- c("CDH1", "MYLK", "ANKRD30A", "ABCA13", "ABCB10", "ADGB", "SFTPB", "SFTPC")
-T_cell <- c(	"CD3D", "CD3G", "CD3E")
-B_cell <- c("CD19", "MS4A1", "BANK1", "BLK", "IRF8", "ABCB4")
+T_cell <- c(	"CD3D", "GZMA", "CD3E")
+B_cell <- c("CD19", "MS4A1", "BANK1", "BLK", "IRF8")
 # Macro_Mono_DC <- c()
 
 
@@ -886,7 +885,7 @@ guides(color = guide_colorbar( title = 'Average\nExpression',  legend.title=elem
   theme(legend.text = element_text(size=14)) + 
        theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/DOTPLOT_markers.png", width = 8.5, height=4)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/DOTPLOT_markers.png", width = 8.5, height=4)
 
 
 ```
