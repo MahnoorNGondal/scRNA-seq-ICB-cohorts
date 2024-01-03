@@ -890,406 +890,406 @@ ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_1
 
 ```
 
-## Features
-```{r}
-HALLMARK <- msigdbr(species="Homo sapiens", category="H")
+<!-- ## Features -->
+<!-- ```{r} -->
+<!-- HALLMARK <- msigdbr(species="Homo sapiens", category="H") -->
 
-HALLMARK_INTERFERON_GAMMA_RESPONSE <- HALLMARK[grep("HALLMARK_INTERFERON_GAMMA_RESPONSE", HALLMARK$gs_name), ]
-features_HALLMARK_INTERFERON_GAMMA_RESPONSE <- unique(HALLMARK_INTERFERON_GAMMA_RESPONSE$human_gene_symbol)
+<!-- HALLMARK_INTERFERON_GAMMA_RESPONSE <- HALLMARK[grep("HALLMARK_INTERFERON_GAMMA_RESPONSE", HALLMARK$gs_name), ] -->
+<!-- features_HALLMARK_INTERFERON_GAMMA_RESPONSE <- unique(HALLMARK_INTERFERON_GAMMA_RESPONSE$human_gene_symbol) -->
 
-# download data from MsigDB
-cgp_gene_sets = msigdbr(species = "Homo sapiens", category = "C2")
-KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION") 
-features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- unique(KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION$human_gene_symbol)
+<!-- # download data from MsigDB -->
+<!-- cgp_gene_sets = msigdbr(species = "Homo sapiens", category = "C2") -->
+<!-- KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION")  -->
+<!-- features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION <- unique(KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION$human_gene_symbol) -->
 
-WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE") 
-features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- unique(WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE$human_gene_symbol)
+<!-- WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- dplyr::filter(cgp_gene_sets, cgp_gene_sets$gs_name == "WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE")  -->
+<!-- features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE <- unique(WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE$human_gene_symbol) -->
 
-features_IMMUNO_proteasom <- c("PSMB8", "PSMB9", "PSME1", "PSME2", "PSMB10")
-```
+<!-- features_IMMUNO_proteasom <- c("PSMB8", "PSMB9", "PSME1", "PSME2", "PSMB10") -->
+<!-- ``` -->
 
 
 
-## heatmap of signatures
-```{r}
+<!-- ## heatmap of signatures -->
+<!-- ```{r} -->
 
-merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$pre_post)
+<!-- merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$pre_post) -->
 
-merged_filtered_tissue_cluster_sig@active.ident <- factor(merged_filtered_tissue_cluster_sig@active.ident,
-                                                           levels=c( "Pre", "Post"))
+<!-- merged_filtered_tissue_cluster_sig@active.ident <- factor(merged_filtered_tissue_cluster_sig@active.ident, -->
+<!--                                                            levels=c( "Pre", "Post")) -->
 
-merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig, subset = Combined_outcome != "UT")
-merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "n/a")
-merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "NE")
-merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "E")
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig, subset = Combined_outcome != "UT") -->
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "n/a") -->
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "NE") -->
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- subset(merged_filtered_tissue_cluster_sig_UT_na, subset = Combined_outcome != "E") -->
 
-merged_filtered_tissue_cluster_sig_UT_na <- ScaleData(merged_filtered_tissue_cluster_sig_UT_na, features = rownames(merged_filtered_tissue_cluster_sig_UT_na))
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- ScaleData(merged_filtered_tissue_cluster_sig_UT_na, features = rownames(merged_filtered_tissue_cluster_sig_UT_na)) -->
 
-merged_filtered_tissue_cluster_sig_UT_na <- SetIdent(merged_filtered_tissue_cluster_sig_UT_na, value = merged_filtered_tissue_cluster_sig_UT_na@meta.data$sample_id)
+<!-- merged_filtered_tissue_cluster_sig_UT_na <- SetIdent(merged_filtered_tissue_cluster_sig_UT_na, value = merged_filtered_tissue_cluster_sig_UT_na@meta.data$sample_id) -->
 
-fetchdata <- function(seurat_obj, x,  x_name) {
-  for (i in 1:length(x))
-  {
-    log_data <- FetchData(seurat_obj, x )
-    log_data_exp <- data.frame((sapply(log_data, expm1)))
-    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
-    log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog)
-    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
-    log_data_exp$sample <- rownames(log_data)
-    
-    return(log_data_exp)
-  }
-}
+<!-- fetchdata <- function(seurat_obj, x,  x_name) { -->
+<!--   for (i in 1:length(x)) -->
+<!--   { -->
+<!--     log_data <- FetchData(seurat_obj, x ) -->
+<!--     log_data_exp <- data.frame((sapply(log_data, expm1))) -->
+<!--     log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T) -->
+<!--     log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog) -->
+<!--     colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name -->
+<!--     log_data_exp$sample <- rownames(log_data) -->
 
+<!--     return(log_data_exp) -->
+<!--   } -->
+<!-- } -->
 
-MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
-MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
-Interferon_gamma_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_HALLMARK_INTERFERON_GAMMA_RESPONSE,  "IFN_g")
-Antigen_processing_and_presentation_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION,  "APM")
-Immuno_proteosome_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_IMMUNO_proteasom,  "IM")
-Immuno_Cancer_immunotherapy <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE,  "C2_ICI")
 
+<!-- MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1") -->
+<!-- MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2") -->
+<!-- Interferon_gamma_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_HALLMARK_INTERFERON_GAMMA_RESPONSE,  "IFN_g") -->
+<!-- Antigen_processing_and_presentation_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_KEGG_ANTIGEN_PROCESSING_AND_PRESENTATION,  "APM") -->
+<!-- Immuno_proteosome_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_IMMUNO_proteasom,  "IM") -->
+<!-- Immuno_Cancer_immunotherapy <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_WP_CANCER_IMMUNOTHERAPY_BY_PD1_BLOCKADE,  "C2_ICI") -->
 
-fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,
-                                          MHC_2_Rasa,
-                                          Interferon_gamma_Rasa,
-                                          Antigen_processing_and_presentation_Rasa,
-                                          Immuno_proteosome_Rasa,
-                                          Immuno_Cancer_immunotherapy), by = 'sample', type = 'full')
 
-fetchdata_all1_Rasa <- fetchdata_all_Rasa
-merged_tissue_cluster_UT_na_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
+<!-- fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa, -->
+<!--                                           MHC_2_Rasa, -->
+<!--                                           Interferon_gamma_Rasa, -->
+<!--                                           Antigen_processing_and_presentation_Rasa, -->
+<!--                                           Immuno_proteosome_Rasa, -->
+<!--                                           Immuno_Cancer_immunotherapy), by = 'sample', type = 'full') -->
 
-merged_tissue_cluster_UT_na_meta_data$sample <- rownames(merged_tissue_cluster_UT_na_meta_data)
+<!-- fetchdata_all1_Rasa <- fetchdata_all_Rasa -->
+<!-- merged_tissue_cluster_UT_na_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data -->
 
-fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_UT_na_meta_data, 
-                               y = fetchdata_all1_Rasa, 
-                               by = "sample")
+<!-- merged_tissue_cluster_UT_na_meta_data$sample <- rownames(merged_tissue_cluster_UT_na_meta_data) -->
 
-fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "Study_name", "Cancer_type_update", "pre_post", "Outcome",  
-                                                          "MHC_1", "MHC_2", "IFN_g", 
-                                                        "APM",
-                                                        "IM", 
-                                                        "C2_ICI")
-]
+<!-- fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_UT_na_meta_data,  -->
+<!--                                y = fetchdata_all1_Rasa,  -->
+<!--                                by = "sample") -->
 
+<!-- fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "Study_name", "Cancer_type_update", "pre_post", "Outcome",   -->
+<!--                                                           "MHC_1", "MHC_2", "IFN_g",  -->
+<!--                                                         "APM", -->
+<!--                                                         "IM",  -->
+<!--                                                         "C2_ICI") -->
+<!-- ] -->
 
 
 
-rownames(fetchdata_all1_Rasa2_geneset) <- fetchdata_all1_Rasa2_geneset$sample
-fetchdata_all1_Rasa2_geneset[1] <- NULL
 
-scale_data_subset_df_merge_sort <- fetchdata_all1_Rasa2_geneset[with(fetchdata_all1_Rasa2_geneset, order( Combined_outcome,  MHC_1, Study_name)),]
+<!-- rownames(fetchdata_all1_Rasa2_geneset) <- fetchdata_all1_Rasa2_geneset$sample -->
+<!-- fetchdata_all1_Rasa2_geneset[1] <- NULL -->
 
-scale_data_subset_df_merge_remove <- scale_data_subset_df_merge_sort[,-c(1:5)]
-scale_data_subset_df_merge_remove <- scale(scale_data_subset_df_merge_remove)
-scale_data_subset_df_merge_matrix <- t((scale_data_subset_df_merge_remove))
+<!-- scale_data_subset_df_merge_sort <- fetchdata_all1_Rasa2_geneset[with(fetchdata_all1_Rasa2_geneset, order( Combined_outcome,  MHC_1, Study_name)),] -->
 
-# 
-# gene_info <- as.data.frame(imp_features)
-# gene_info$Sig. <- "MHC_1"
-# gene_info$Sig.[4:40] <- "MHC_2"
-# gene_info$Sig.[11:40] <- "non_classical_MHC"
-# gene_info$Sig.[15:40] <- "TF"
-# gene_info$Sig.[27:40] <- "APM"
-# gene_info$Sig.[34:40] <- "Markers"
-# gene_info$Sig.[36:40] <- "IP"
-# row.names(gene_info) <- gene_info$imp_features
-# gene_info[1] <- NULL
+<!-- scale_data_subset_df_merge_remove <- scale_data_subset_df_merge_sort[,-c(1:5)] -->
+<!-- scale_data_subset_df_merge_remove <- scale(scale_data_subset_df_merge_remove) -->
+<!-- scale_data_subset_df_merge_matrix <- t((scale_data_subset_df_merge_remove)) -->
 
-down.sample_meta_data_specific <- data.frame(rownames(scale_data_subset_df_merge_sort),   scale_data_subset_df_merge_sort$Combined_outcome,  scale_data_subset_df_merge_sort$Study_name, scale_data_subset_df_merge_sort$pre_post,  scale_data_subset_df_merge_sort$Cancer_type_update)
-down.sample_meta_data_specific[1] <- NULL
-colnames(down.sample_meta_data_specific) <- c("Response",  "Study_name",  "Timepoint", "Cancer")
-# down.sample_meta_data_specific$Timepoint <- factor (down.sample_meta_data_specific$Timepoint, levels = c ("Pre", "Post" ))
+<!-- #  -->
+<!-- # gene_info <- as.data.frame(imp_features) -->
+<!-- # gene_info$Sig. <- "MHC_1" -->
+<!-- # gene_info$Sig.[4:40] <- "MHC_2" -->
+<!-- # gene_info$Sig.[11:40] <- "non_classical_MHC" -->
+<!-- # gene_info$Sig.[15:40] <- "TF" -->
+<!-- # gene_info$Sig.[27:40] <- "APM" -->
+<!-- # gene_info$Sig.[34:40] <- "Markers" -->
+<!-- # gene_info$Sig.[36:40] <- "IP" -->
+<!-- # row.names(gene_info) <- gene_info$imp_features -->
+<!-- # gene_info[1] <- NULL -->
 
+<!-- down.sample_meta_data_specific <- data.frame(rownames(scale_data_subset_df_merge_sort),   scale_data_subset_df_merge_sort$Combined_outcome,  scale_data_subset_df_merge_sort$Study_name, scale_data_subset_df_merge_sort$pre_post,  scale_data_subset_df_merge_sort$Cancer_type_update) -->
+<!-- down.sample_meta_data_specific[1] <- NULL -->
+<!-- colnames(down.sample_meta_data_specific) <- c("Response",  "Study_name",  "Timepoint", "Cancer") -->
+<!-- # down.sample_meta_data_specific$Timepoint <- factor (down.sample_meta_data_specific$Timepoint, levels = c ("Pre", "Post" )) -->
 
-col_fun <- colorRamp2(c( -2,  0, 2),c("#6d79c2", "white", "#d90202"))
-col_fun(seq(-2, 2))
 
-anno <- HeatmapAnnotation(Response = as.matrix((down.sample_meta_data_specific$Response)),
-                          Study_name = as.matrix((down.sample_meta_data_specific$Study_name)),
-                          Timepoint = as.matrix((down.sample_meta_data_specific$Timepoint)),
-                          Cancer = as.matrix((down.sample_meta_data_specific$Cancer)))
-
-png(file="/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/all_heatmapnew_47mal6.png", width=450, height=400)
-
-ComplexHeatmap::Heatmap(as.matrix(scale_data_subset_df_merge_matrix), row_dend_reorder = FALSE, show_column_names = FALSE, show_row_names = TRUE,  
-                         row_names_side = "left", row_dend_side = "left",
-                        column_names_side = "top", column_dend_side = "bottom", cluster_rows = FALSE, cluster_columns = FALSE,
-                        top_annotation = anno,
-                        name = "Expression") 
-dev.off()
+<!-- col_fun <- colorRamp2(c( -2,  0, 2),c("#6d79c2", "white", "#d90202")) -->
+<!-- col_fun(seq(-2, 2)) -->
 
+<!-- anno <- HeatmapAnnotation(Response = as.matrix((down.sample_meta_data_specific$Response)), -->
+<!--                           Study_name = as.matrix((down.sample_meta_data_specific$Study_name)), -->
+<!--                           Timepoint = as.matrix((down.sample_meta_data_specific$Timepoint)), -->
+<!--                           Cancer = as.matrix((down.sample_meta_data_specific$Cancer))) -->
 
-```
+<!-- png(file="/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/all_heatmapnew_47mal6.png", width=450, height=400) -->
 
-
-
-## FetchData log2 normalized
-```{r}
- 
-fetchdata <- function(seurat_obj, x,  x_name) {
-  for (i in 1:length(x))
-  {
-    log_data <- FetchData(seurat_obj, x )
-    log_data_exp <- data.frame((sapply(log_data, expm1)))
-    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
-    log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog)
-    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
-    log_data_exp$sample <- rownames(log_data)
-    
-    return(log_data_exp)
-  }
-}
-
-
-MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
-MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
-
-
-```
-
-
-```{r}
-fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,
-                                          MHC_2_Rasa), by = 'sample', type = 'full')
-
-fetchdata_all1_Rasa <- fetchdata_all_Rasa
-merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
-
-merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data)
+<!-- ComplexHeatmap::Heatmap(as.matrix(scale_data_subset_df_merge_matrix), row_dend_reorder = FALSE, show_column_names = FALSE, show_row_names = TRUE,   -->
+<!--                          row_names_side = "left", row_dend_side = "left", -->
+<!--                         column_names_side = "top", column_dend_side = "bottom", cluster_rows = FALSE, cluster_columns = FALSE, -->
+<!--                         top_annotation = anno, -->
+<!--                         name = "Expression")  -->
+<!-- dev.off() -->
 
-fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data, 
-                               y = fetchdata_all1_Rasa, 
-                               by = "sample")
 
-```
+<!-- ``` -->
 
-## boxplots with p values
-```{r}
 
 
-fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "sample_id", "Cancer_type", "pre_post", "Outcome",  "Cancer_type_update",
-                                                          "MHC_1", "MHC_2")
-]
+<!-- ## FetchData log2 normalized -->
+<!-- ```{r} -->
 
+<!-- fetchdata <- function(seurat_obj, x,  x_name) { -->
+<!--   for (i in 1:length(x)) -->
+<!--   { -->
+<!--     log_data <- FetchData(seurat_obj, x ) -->
+<!--     log_data_exp <- data.frame((sapply(log_data, expm1))) -->
+<!--     log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T) -->
+<!--     log_data_exp$x_meanlog <- log1p(log_data_exp$x_meanlog) -->
+<!--     colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name -->
+<!--     log_data_exp$sample <- rownames(log_data) -->
 
+<!--     return(log_data_exp) -->
+<!--   } -->
+<!-- } -->
 
-fetchdata_all1_Rasa2_geneset_melt <- melt(fetchdata_all1_Rasa2_geneset)
-# 
-# 
-fetchdata_all1_Rasa2_geneset_melt$pre_post <- factor (fetchdata_all1_Rasa2_geneset_melt$pre_post, levels = c ("Pre", "Post" ))
 
-names(fetchdata_all1_Rasa2_geneset_melt)[names(fetchdata_all1_Rasa2_geneset_melt) == 'variable'] <- 'signature'
-# 
-fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "UT")
-fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "E")
-fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "NE")
-fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "n/a")
+<!-- MHC_1_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1") -->
+<!-- MHC_2_Rasa <- fetchdata(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2") -->
 
- 
-  
- b <- ggboxplot(fetchdata_all1_Rasa2_geneset_melt, "Combined_outcome", "value", fill = "Combined_outcome", 
-   palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat cancer cell level")  +
-  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + 
-       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) +
-  scale_fill_manual(values = c("#00AFBB", "#E7B800")) +
-  labs(color = "Response")  +
-  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
-    theme(axis.text.x = element_text( colour = "black")) + 
-    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") +
-  guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL)) 
- b
-  
-#  
-#   b
-b <- facet(b, facet.by =  c("signature"),  nrow = 4,
- ncol = 2, scales = "free_y")
- b
 
-#b <- b + stat_compare_means(label = "p.format",method="t.test")
- stat.test <- fetchdata_all1_Rasa2_geneset_melt %>%
-  rstatix::group_by(signature) %>%
-  rstatix::t_test(value ~ Combined_outcome)
+<!-- ``` -->
 
 
-stat.test <-add_y_position(stat.test)
+<!-- ```{r} -->
+<!-- fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa, -->
+<!--                                           MHC_2_Rasa), by = 'sample', type = 'full') -->
 
- b <- b +
-  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
-  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
-b
- 
+<!-- fetchdata_all1_Rasa <- fetchdata_all_Rasa -->
+<!-- merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data -->
 
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type1.png", b, width =7.5, height=6)
-```
+<!-- merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data) -->
 
+<!-- fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data,  -->
+<!--                                y = fetchdata_all1_Rasa,  -->
+<!--                                by = "sample") -->
 
-## exp data
-```{r}
+<!-- ``` -->
 
-fetchdataexp <- function(seurat_obj, x,  x_name) {
-  for (i in 1:length(x))
-  {
-    log_data <- FetchData(seurat_obj, x )
-    log_data_exp <- data.frame((sapply(log_data, expm1)))
-    log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T)
-    log_data_exp$x_meanlog <- (log_data_exp$x_meanlog)
-    colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name
-    log_data_exp$sample <- rownames(log_data)
-    
-    return(log_data_exp)
-  }
-}
-MHC_1_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1")
-MHC_2_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2")
+<!-- ## boxplots with p values -->
+<!-- ```{r} -->
 
-```
 
+<!-- fetchdata_all1_Rasa2_geneset <- fetchdata_all1_Rasa2[, c("sample", "Combined_outcome", "sample_id", "Cancer_type", "pre_post", "Outcome",  "Cancer_type_update", -->
+<!--                                                           "MHC_1", "MHC_2") -->
+<!-- ] -->
 
-```{r}
-fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,	
-                                           MHC_2_Rasa), by = 'sample', type = 'full')
 
-fetchdata_all1_Rasa <- fetchdata_all_Rasa
-merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data
 
-merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data)
+<!-- fetchdata_all1_Rasa2_geneset_melt <- melt(fetchdata_all1_Rasa2_geneset) -->
+<!-- #  -->
+<!-- #  -->
+<!-- fetchdata_all1_Rasa2_geneset_melt$pre_post <- factor (fetchdata_all1_Rasa2_geneset_melt$pre_post, levels = c ("Pre", "Post" )) -->
 
-fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data, 
-                               y = fetchdata_all1_Rasa, 
-                               by = "sample")
+<!-- names(fetchdata_all1_Rasa2_geneset_melt)[names(fetchdata_all1_Rasa2_geneset_melt) == 'variable'] <- 'signature' -->
+<!-- #  -->
+<!-- fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "UT") -->
+<!-- fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "E") -->
+<!-- fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "NE") -->
+<!-- fetchdata_all1_Rasa2_geneset_melt <- filter(fetchdata_all1_Rasa2_geneset_melt, fetchdata_all1_Rasa2_geneset_melt$Combined_outcome != "n/a") -->
 
-```
 
 
-## violin plot
-```{r fig1, fig.height =3.3, fig.width =4}
+<!--  b <- ggboxplot(fetchdata_all1_Rasa2_geneset_melt, "Combined_outcome", "value", fill = "Combined_outcome",  -->
+<!--    palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat cancer cell level")  + -->
+<!--   xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  +  -->
+<!--        theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + -->
+<!--   scale_fill_manual(values = c("#00AFBB", "#E7B800")) + -->
+<!--   labs(color = "Response")  + -->
+<!--   theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+  -->
+<!--     theme(axis.text.x = element_text( colour = "black")) +  -->
+<!--     theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") + -->
+<!--   guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL))  -->
+<!--  b -->
 
-fetchdata_all_T_StemISG_sabioN6 <- aggregate(  MHC_1 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean")
-fetchdata_all_T_StemISG_sabioN7 <- aggregate(  MHC_2 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean")
+<!-- #   -->
+<!-- #   b -->
+<!-- b <- facet(b, facet.by =  c("signature"),  nrow = 4, -->
+<!--  ncol = 2, scales = "free_y") -->
+<!--  b -->
 
-# fetchdata_all_T_StemISG_sabioN8 <- aggregate(  normalized_CD8_totalcells ~ pre_post + sample_id  + Cancer_type_update , fetchdata_all1_Rasa2, "mean")
-##MHC
-fetchdata_all_T_Stem_A <- cbind(fetchdata_all_T_StemISG_sabioN6, fetchdata_all_T_StemISG_sabioN7[5])
-##other signals
+<!-- #b <- b + stat_compare_means(label = "p.format",method="t.test") -->
+<!--  stat.test <- fetchdata_all1_Rasa2_geneset_melt %>% -->
+<!--   rstatix::group_by(signature) %>% -->
+<!--   rstatix::t_test(value ~ Combined_outcome) -->
 
-fetchdata_all_T_Stem_A_log <- log1p(fetchdata_all_T_Stem_A[,5:6])
 
-fetchdata_all_T_Stem_A_log <- cbind(fetchdata_all_T_Stem_A[1:4], fetchdata_all_T_Stem_A_log)
+<!-- stat.test <-add_y_position(stat.test) -->
 
-#fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "UT")
-#fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "n/a")
+<!--  b <- b + -->
+<!--   stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) + -->
+<!--   scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) -->
+<!-- b -->
 
-fetchdata_all_T_Stem_A_log$pre_post <- factor (fetchdata_all_T_Stem_A_log$pre_post, levels = c ("Pre", "Post" ))
 
-Z <- ggscatter(fetchdata_all_T_Stem_A_log, x = "MHC_2", y = "MHC_1",  add = "reg.line" , shape = "pre_post",
-          conf.int = TRUE,  
-          palette = mycolors  ,
-           label.x.npc = "left", cor.coef = TRUE, cor.coeff.args = list(method = "spearman" , label.x = 0.01, label.y =3.8, color = "black",label.sep='\n'), cor.coef.size =7, star.plot.lwd = 20, repel = TRUE ) + guides(color=guide_legend(title="Cancer"))  + ylab("Cancer MHC_1") + xlab("Cancer MHC_2") + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+theme(axis.text.y=element_text(size=50)) + theme(legend.title = element_text(size=50))+
-  theme(legend.text = element_text(size=50)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none") +
-  theme_classic() +geom_point(aes(color=Cancer_type_update)) + theme(legend.position = "right") +
-  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
-    theme(axis.text.x = element_text( colour = "black")) + 
-    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "right") 
+<!--   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type1.png", b, width =7.5, height=6) -->
+<!-- ``` -->
 
-Z
 
-Z <- facet(Z, facet.by =  c("pre_post"))
-Z
+<!-- ## exp data -->
+<!-- ```{r} -->
 
-# Z <- facet(Z, facet.by =  c( "Combined_outcome", "pre_post"),  nrow = 3,
-#  ncol = 3, scales = "free_y")
-Z
+<!-- fetchdataexp <- function(seurat_obj, x,  x_name) { -->
+<!--   for (i in 1:length(x)) -->
+<!--   { -->
+<!--     log_data <- FetchData(seurat_obj, x ) -->
+<!--     log_data_exp <- data.frame((sapply(log_data, expm1))) -->
+<!--     log_data_exp$x_meanlog <- rowMeans(log_data_exp, na.rm = T) -->
+<!--     log_data_exp$x_meanlog <- (log_data_exp$x_meanlog) -->
+<!--     colnames(log_data_exp)[which(names(log_data_exp) == "x_meanlog")] <- x_name -->
+<!--     log_data_exp$sample <- rownames(log_data) -->
 
+<!--     return(log_data_exp) -->
+<!--   } -->
+<!-- } -->
+<!-- MHC_1_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_1_classical, "MHC_1") -->
+<!-- MHC_2_Rasa <- fetchdataexp(merged_filtered_tissue_cluster_sig_UT_na, features_MHC_2_classical,  "MHC_2") -->
 
+<!-- ``` -->
 
 
-# mhc only is 9.5 vs 4.5
+<!-- ```{r} -->
+<!-- fetchdata_all_Rasa <- plyr::join_all(list(MHC_1_Rasa,	 -->
+<!--                                            MHC_2_Rasa), by = 'sample', type = 'full') -->
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/scatter11.png", Z,  width =8, height=4.8)
+<!-- fetchdata_all1_Rasa <- fetchdata_all_Rasa -->
+<!-- merged_tissue_cluster_meta_data <- merged_filtered_tissue_cluster_sig_UT_na@meta.data -->
 
-fetchdata_all_T_Stem_A_sub <- fetchdata_all_T_Stem_A[,-c(2:3)]
-fetchdata_all_T_Stem_A_melt <- melt(fetchdata_all_T_Stem_A_sub)
+<!-- merged_tissue_cluster_meta_data$sample <- rownames(merged_tissue_cluster_meta_data) -->
 
-fetchdata_all_T_Stem_A_melt$pre_post <- factor (fetchdata_all_T_Stem_A_melt$pre_post, levels = c ("Pre", "Post" ))
+<!-- fetchdata_all1_Rasa2 <- left_join(x = merged_tissue_cluster_meta_data,  -->
+<!--                                y = fetchdata_all1_Rasa,  -->
+<!--                                by = "sample") -->
 
-fetchdata_all_T_Stem_A_melt$Combined_outcome <- factor (fetchdata_all_T_Stem_A_melt$Combined_outcome, levels = c ("Unfavourable", "Favourable" ))
+<!-- ``` -->
 
-names(fetchdata_all_T_Stem_A_melt)[names(fetchdata_all_T_Stem_A_melt) == 'variable'] <- 'signature'
 
-fetchdata_all_T_Stem_A_melt <- filter(fetchdata_all_T_Stem_A_melt, signature == "MHC_2")
+<!-- ## violin plot -->
+<!-- ```{r fig1, fig.height =3.3, fig.width =4} -->
 
- b <- ggboxplot(fetchdata_all_T_Stem_A_melt, "Combined_outcome", "value", fill = "pre_post", 
-   palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat patient level")  +
-  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + 
-       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) +
-  scale_fill_manual(values = c("#00AFBB", "#E7B800")) +
-  labs(color = "Response")  +
-  theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+ 
-    theme(axis.text.x = element_text( colour = "black")) + 
-    theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") +
-  guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL)) 
- b
-  
-#  
-#   b
-b <- facet(b, facet.by =  c("signature"))
- b
+<!-- fetchdata_all_T_StemISG_sabioN6 <- aggregate(  MHC_1 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean") -->
+<!-- fetchdata_all_T_StemISG_sabioN7 <- aggregate(  MHC_2 ~ pre_post + sample_id + Cancer_type_update + Combined_outcome, fetchdata_all1_Rasa2, "mean") -->
 
-#b <- b + stat_compare_means(label = "p.format",method="t.test")
- stat.test <- fetchdata_all1_Rasa2_geneset_melt %>%
-  rstatix::t_test(value ~ Combined_outcome)
+<!-- # fetchdata_all_T_StemISG_sabioN8 <- aggregate(  normalized_CD8_totalcells ~ pre_post + sample_id  + Cancer_type_update , fetchdata_all1_Rasa2, "mean") -->
+<!-- ##MHC -->
+<!-- fetchdata_all_T_Stem_A <- cbind(fetchdata_all_T_StemISG_sabioN6, fetchdata_all_T_StemISG_sabioN7[5]) -->
+<!-- ##other signals -->
 
+<!-- fetchdata_all_T_Stem_A_log <- log1p(fetchdata_all_T_Stem_A[,5:6]) -->
 
-stat.test <-add_y_position(stat.test)
+<!-- fetchdata_all_T_Stem_A_log <- cbind(fetchdata_all_T_Stem_A[1:4], fetchdata_all_T_Stem_A_log) -->
 
- b <- b +
-  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
-  scale_y_continuous(expand = expansion(mult = c(0.00, 0.1)))
-b
- 
+<!-- #fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "UT") -->
+<!-- #fetchdata_all_T_Stem_A_log <- filter(fetchdata_all_T_Stem_A_log, fetchdata_all_T_Stem_A_log$Combined_outcome != "n/a") -->
 
+<!-- fetchdata_all_T_Stem_A_log$pre_post <- factor (fetchdata_all_T_Stem_A_log$pre_post, levels = c ("Pre", "Post" )) -->
 
-  #, palette = c("#00AFBB", "#E7B800")
-  b <- ggboxplot(fetchdata_all_T_Stem_A_melt, x = "Combined_outcome", y = "value", palette = mycolors, fill = "pre_post")  + ylab("Total expression\nat patient level")   +
-  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
-  theme(legend.text = element_text(size=20)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  + 
-       theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1)) +
-  scale_fill_manual(values = c("#00AFBB", "#E7B800"))+ guides(fill=guide_legend(title=NULL)) 
-  b
-#  b
-# b <- facet(b, facet.by =  c("signature"),  nrow = 2,
-#  ncol = 2)
-#  b
+<!-- Z <- ggscatter(fetchdata_all_T_Stem_A_log, x = "MHC_2", y = "MHC_1",  add = "reg.line" , shape = "pre_post", -->
+<!--           conf.int = TRUE,   -->
+<!--           palette = mycolors  , -->
+<!--            label.x.npc = "left", cor.coef = TRUE, cor.coeff.args = list(method = "spearman" , label.x = 0.01, label.y =3.8, color = "black",label.sep='\n'), cor.coef.size =7, star.plot.lwd = 20, repel = TRUE ) + guides(color=guide_legend(title="Cancer"))  + ylab("Cancer MHC_1") + xlab("Cancer MHC_2") + theme(legend.position = "none") +theme(axis.text.x=element_text(size=50))+theme(axis.text.y=element_text(size=50)) + theme(legend.title = element_text(size=50))+ -->
+<!--   theme(legend.text = element_text(size=50)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 50)) + theme(text = element_text(size = 50))  + theme(legend.position = "none") + -->
+<!--   theme_classic() +geom_point(aes(color=Cancer_type_update)) + theme(legend.position = "right") + -->
+<!--   theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+  -->
+<!--     theme(axis.text.x = element_text( colour = "black")) +  -->
+<!--     theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "right")  -->
 
-stat.test <- fetchdata_all_T_Stem_A_melt %>%
-  rstatix::t_test(value ~ Combined_outcome)
+<!-- Z -->
 
+<!-- Z <- facet(Z, facet.by =  c("pre_post")) -->
+<!-- Z -->
 
-stat.test <-add_y_position(stat.test)
+<!-- # Z <- facet(Z, facet.by =  c( "Combined_outcome", "pre_post"),  nrow = 3, -->
+<!-- #  ncol = 3, scales = "free_y") -->
+<!-- Z -->
 
- b <- b +
-  stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) +
-  scale_y_continuous(expand = expansion(mult = c(0.05, 0.1)))
-b
 
 
 
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type4.png", b, width =4, height=5)
-```
+<!-- # mhc only is 9.5 vs 4.5 -->
+
+<!-- ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/scatter11.png", Z,  width =8, height=4.8) -->
+
+<!-- fetchdata_all_T_Stem_A_sub <- fetchdata_all_T_Stem_A[,-c(2:3)] -->
+<!-- fetchdata_all_T_Stem_A_melt <- melt(fetchdata_all_T_Stem_A_sub) -->
+
+<!-- fetchdata_all_T_Stem_A_melt$pre_post <- factor (fetchdata_all_T_Stem_A_melt$pre_post, levels = c ("Pre", "Post" )) -->
+
+<!-- fetchdata_all_T_Stem_A_melt$Combined_outcome <- factor (fetchdata_all_T_Stem_A_melt$Combined_outcome, levels = c ("Unfavourable", "Favourable" )) -->
+
+<!-- names(fetchdata_all_T_Stem_A_melt)[names(fetchdata_all_T_Stem_A_melt) == 'variable'] <- 'signature' -->
+
+<!-- fetchdata_all_T_Stem_A_melt <- filter(fetchdata_all_T_Stem_A_melt, signature == "MHC_2") -->
+
+<!--  b <- ggboxplot(fetchdata_all_T_Stem_A_melt, "Combined_outcome", "value", fill = "pre_post",  -->
+<!--    palette = mycolors, add.params = list(fill = "white"))     + ylab("Total expression\nat patient level")  + -->
+<!--   xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  +  -->
+<!--        theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + -->
+<!--   scale_fill_manual(values = c("#00AFBB", "#E7B800")) + -->
+<!--   labs(color = "Response")  + -->
+<!--   theme_classic()+theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size =20))+  -->
+<!--     theme(axis.text.x = element_text( colour = "black")) +  -->
+<!--     theme(axis.text.y = element_text( colour = "black"))+ theme(legend.position = "top") + -->
+<!--   guides(color=guide_legend(nrow=1,  byrow=TRUE,  title="Response")) + theme(axis.text.x = element_text(angle = 90, vjust =0.2, hjust=0.95))  + guides(fill=guide_legend(title=NULL))  -->
+<!--  b -->
+
+<!-- #   -->
+<!-- #   b -->
+<!-- b <- facet(b, facet.by =  c("signature")) -->
+<!--  b -->
+
+<!-- #b <- b + stat_compare_means(label = "p.format",method="t.test") -->
+<!--  stat.test <- fetchdata_all1_Rasa2_geneset_melt %>% -->
+<!--   rstatix::t_test(value ~ Combined_outcome) -->
+
+
+<!-- stat.test <-add_y_position(stat.test) -->
+
+<!--  b <- b + -->
+<!--   stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) + -->
+<!--   scale_y_continuous(expand = expansion(mult = c(0.00, 0.1))) -->
+<!-- b -->
+
+
+
+<!--   #, palette = c("#00AFBB", "#E7B800") -->
+<!--   b <- ggboxplot(fetchdata_all_T_Stem_A_melt, x = "Combined_outcome", y = "value", palette = mycolors, fill = "pre_post")  + ylab("Total expression\nat patient level")   + -->
+<!--   xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+ -->
+<!--   theme(legend.text = element_text(size=20)) +                                                               # Change font size -->
+<!--   theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))  + theme(legend.position = "top")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +  -->
+<!--        theme(axis.text.x=element_text(angle = 90, vjust = 0.5, hjust=1)) + -->
+<!--   scale_fill_manual(values = c("#00AFBB", "#E7B800"))+ guides(fill=guide_legend(title=NULL))  -->
+<!--   b -->
+<!-- #  b -->
+<!-- # b <- facet(b, facet.by =  c("signature"),  nrow = 2, -->
+<!-- #  ncol = 2) -->
+<!-- #  b -->
+
+<!-- stat.test <- fetchdata_all_T_Stem_A_melt %>% -->
+<!--   rstatix::t_test(value ~ Combined_outcome) -->
+
+
+<!-- stat.test <-add_y_position(stat.test) -->
+
+<!--  b <- b + -->
+<!--   stat_pvalue_manual(stat.test, label = "p", tip.length = 0.01) + -->
+<!--   scale_y_continuous(expand = expansion(mult = c(0.05, 0.1))) -->
+<!-- b -->
+
+
+
+<!--   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/boxplot_type4.png", b, width =4, height=5) -->
+<!-- ``` -->
 
 
 ## Rshiny data
@@ -1304,6 +1304,9 @@ merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_ti
 merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_tissue_cluster_sig$Combined_outcome == "NE"  , "Unfavourable", merged_filtered_tissue_cluster_sig$Combined_outcome)
 
 merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$sample_id_pre_post  )
+
+
+saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/merged_filtered_tissue_cluster_sig.RDS")
 
 down.sample <- subset(merged_filtered_tissue_cluster_sig,  downsample = 200)
 
