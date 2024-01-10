@@ -107,33 +107,50 @@ feats <- c("nFeature_RNA", "nCount_RNA", "percent.mito")
 VlnPlot(merged_tissue_cluster_update, group.by = "Study_name", features = feats, pt.size = 0, ncol = 3) +
     NoLegend()
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/vln2.png", width = 15, height=10)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/vln2.png", width = 15, height=10)
 
 FeatureScatter(merged_tissue_cluster_update, "nCount_RNA", "nFeature_RNA", group.by = "Study_name", pt.size = 0.5)
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/FS2.png", width = 15, height=10)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/FS2.png", width = 15, height=10)
 
+before_filtering <- merged_tissue_cluster_update
 ### Filtering
-selected_c <- WhichCells(merged_tissue_cluster_update, expression = nFeature_RNA >= 200)
+# selected_c <- WhichCells(merged_tissue_cluster_update, expression = nFeature_RNA >= 200)
 selected_f <- rownames(merged_tissue_cluster_update)[Matrix::rowSums(merged_tissue_cluster_update) > 3]
 
-merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update, features = selected_f, cells = selected_c)
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update, features = selected_f)
 dim(merged_tissue_cluster_update_filt)
+
+after_lowqualitycellandfeatures_filtering <- merged_tissue_cluster_update_filt
 
 selected_mito <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.mito < 20)
 selected_ribo <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.ribo > 5)
 
 # and subset the object to only keep those cells
 merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_mito)
+
+after_mit_filtering <- merged_tissue_cluster_update_filt
+
 merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_ribo)
 
+after_rb_filtering <- merged_tissue_cluster_update_filt
 
+merged_tissue_cluster_update_filt <- SetIdent(merged_tissue_cluster_update_filt, value = merged_tissue_cluster_update_filt@meta.data$Study_name)
+
+merged_tissue_cluster_update_filt@active.ident <- factor(merged_tissue_cluster_update_filt@active.ident,
+                                                           levels=c( "Ma" ,"Yost", "Tirosh", "Pozniak",  "Alvarez_Breckenridge", "Jerby_Arnon", "Bassez",
+                                                                     "Bi"))
 ## plot filtered data
-feats <- c("nFeature_RNA", "nCount_RNA", "percent.mito")
-VlnPlot(merged_tissue_cluster_update_filt, group.by = "Study_name", features = feats, pt.size =0, ncol = 3) +
-    NoLegend()
+feats <- c("percent.mito", "percent.ribo", "nFeature_RNA", "nCount_RNA" )
+VlnPlot(merged_tissue_cluster_update_filt, group.by = "Study_name", features = feats, pt.size =0, ncol = 4) +
+    NoLegend()  +
+  labs(fill = "% Patients")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "none", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15))  + 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/vln1afterfilter2.png", width = 15, height=10)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/vln1afterfilter3.png", width = 10, height=4)
 ```
 
 ## normalization - 1 log transformation
@@ -160,6 +177,7 @@ seurat_analysis <- function(seurat.object) {
 merged_tissue_cluster_update_filt <- seurat_analysis(merged_tissue_cluster_update_filt)
 
 saveRDS(merged_tissue_cluster_update_filt, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_9_9_08_23/merged_tissue_cluster_update_filt.RDS")
+
 ```
 
 # individual analysis for doublet finder
@@ -541,19 +559,23 @@ merged_filtered_tissue_cluster <- merge(Alvarez_Breckenridge_seurat, y = c(Basse
 merged_filtered_tissue_cluster <- seurat_analysis(merged_filtered_tissue_cluster)
 
 saveRDS(merged_filtered_tissue_cluster, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_2DF.RDS")
+merged_filtered_tissue_cluster <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_2DF.RDS") ## after_DF_filtering
 
 merged_filtered_tissue_cluster_md <- merged_filtered_tissue_cluster@meta.data
 
 merged_filtered_tissue_cluster_md$logUMI <- log(merged_filtered_tissue_cluster_md$nCount_RNA)
 
-  b <- ggboxplot(merged_filtered_tissue_cluster_md, x = "DoubletFinder", y = "logUMI", add = "none", fill = "DoubletFinder", palette = mycols)    + ylab("log nCount_RNA")  +
-  xlab(NULL)  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) + theme(legend.title = element_text(size=15))+
+  b <- ggboxplot(merged_filtered_tissue_cluster_md, x = "DoubletFinder", y = "logUMI", add = "none", fill = "DoubletFinder", palette = mycols) + theme_classic()   +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 15)) + theme(strip.text.y = element_text(size = 15))  + ylab("log nCount_RNA")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
   theme(legend.text = element_text(size=15)) +                                                               # Change font size
-  theme(strip.text.x = element_text(size = 10)) + theme(text = element_text(size = 15))  + theme(legend.position = "none")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
-       theme(axis.text.x=element_text(size=15, angle=90,hjust=0.95,vjust=0.2)) + facet_wrap(~Study_name, nrow  = 1)
+  theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size = 20))  + theme(legend.position = "none")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
+       theme(axis.text.x=element_text(size=20, angle=90,hjust=0.95,vjust=0.2)) + facet_wrap(~Study_name, nrow  = 1) + 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black")) + theme(strip.text = element_text(size = 15)) 
 b
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/DF.png",  width =13, height=4)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/DF.png",  width =18, height=4)
 
 ggdensity(merged_filtered_tissue_cluster_md, x = "nCount_RNA",
    add = "mean", rug = TRUE,
@@ -577,7 +599,7 @@ ggdensity(merged_filtered_tissue_cluster_md, x = "nCount_RNA",
 
 ##########################################################################
 
-merged_filtered_tissue_cluster_sig <- subset(merged_filtered_tissue_cluster, 
+after_DF_filtering <- subset(merged_filtered_tissue_cluster, 
                                              DoubletFinder == "Singlet")
 
 
@@ -586,7 +608,7 @@ merged_filtered_tissue_cluster_sig_md_subset <- merged_filtered_tissue_cluster_s
 
 merged_filtered_tissue_cluster_sig$enough_cells <- ifelse(merged_filtered_tissue_cluster_sig$sample_id_pre_post %in% merged_filtered_tissue_cluster_sig_md_subset$sample_id_pre_post, "enough", "not_enough")
 
-merged_filtered_tissue_cluster_sig <-  subset(x = merged_filtered_tissue_cluster_sig, subset = enough_cells == "enough")
+merged_filtered_tissue_cluster_sig <-  subset(x = merged_filtered_tissue_cluster_sig, subset = enough_cells == "enough") ## after_CC_filtering
 
 merged_filtered_tissue_cluster_sig <- seurat_analysis(merged_filtered_tissue_cluster_sig)
 
@@ -594,6 +616,59 @@ saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/0
 
 # merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig_2DF.RDS")
 ```
+
+
+## Calculating QC
+```{r}
+before_filtering_md <- before_filtering@meta.data
+before_filtering_md_agg <- data.frame(table(before_filtering_md$Study_name))
+before_filtering_md_agg$QC <- "Before_QC"
+
+#after_lowqualitycellandfeatures_filtering
+after_mit_filtering_md <- after_mit_filtering@meta.data
+after_mit_filtering_md_agg <- data.frame(table(after_mit_filtering_md$Study_name))
+after_mit_filtering_md_agg$QC <- "MT_filter"
+
+after_rb_filtering_md <- after_rb_filtering@meta.data
+after_rb_filtering_md_agg <- data.frame(table(after_rb_filtering_md$Study_name))
+after_rb_filtering_md_agg$QC <- "RP[SL]_filter"
+
+after_DF_filtering_md <- after_DF_filtering@meta.data
+after_DF_filtering_md_agg <- data.frame(table(after_DF_filtering_md$Study_name))
+after_DF_filtering_md_agg$QC <- "DF_filter"
+
+after_CC_filtering_md <- after_CC_filtering@meta.data
+after_CC_filtering_md_agg <- data.frame(table(after_CC_filtering_md$Study_name))
+after_CC_filtering_md_agg$QC <- "CC_filter"
+
+combined <- rbind(before_filtering_md_agg, 
+                  after_mit_filtering_md_agg,
+                  after_rb_filtering_md_agg,
+                  after_DF_filtering_md_agg,
+                  after_CC_filtering_md_agg)
+
+  combined$QC <- factor (combined$QC, levels = c ("Before_QC", "MT_filter", "RP[SL]_filter", "DF_filter", "CC_filter"))
+  
+  combined$Var1 <- factor(combined$Var1, levels=c( "Ma" ,"Yost", "Tirosh", "Pozniak",  "Alvarez_Breckenridge", "Jerby_Arnon", "Bassez",
+                                                                     "Bi"))
+
+ggbarplot(combined, "Var1", "Freq",
+  fill = "QC", color = "QC", palette = "Paired",
+  label = FALSE,
+  position = position_dodge(0.9)) + theme_classic()   +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 15)) + theme(strip.text.y = element_text(size = 15))  + ylab("Cell count")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=15)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size = 20))  + theme(legend.position = "right")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
+       theme(axis.text.x=element_text(size=20, angle=45,hjust=1,vjust=1)) + 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black")) + theme(strip.text = element_text(size = 15)) 
+
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/QC.png",  width =7, height=6)
+```
+
+
 
 ## umaps for the combined data
 ```{r}
@@ -606,7 +681,7 @@ p1 <- DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by =
 # +
 #   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/umap_studyname.png",  width =8, height=5)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/umap_studyname.png",  width =8, height=5)
 
 merged_filtered_tissue_cluster_sig$Study_name_cancer2 <- ifelse(merged_filtered_tissue_cluster_sig$Study_name_cancer == "Alvarez_Breckenridge:MBM",
                                                                 "Alvarez:MBM", merged_filtered_tissue_cluster_sig$Study_name_cancer)
@@ -618,40 +693,40 @@ p2 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by 
 # +
 #   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/umap_Cancer_type_update.png",  width =8, height=5)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/umap_Cancer_type_update.png",  width =8, height=5)
 
 
-p3 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "pre_post", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('Pre and post patients'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+p3 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "pre_post", label = FALSE, pt.size = 0.4, label.size = 6, repel = TRUE) + labs(title = bquote('Pre and post samples'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
   labs(color = "pre_post")  +theme(legend.position = "right", 
                legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
   theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
 # +
 #   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/pre_post.png",  width =8, height=5)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/pre_post.png",  width =8, height=5)
 
 merged_filtered_tissue_cluster_sig@active.ident <- factor(merged_filtered_tissue_cluster_sig@active.ident,
                                                            levels=c( "Favourable", "Unfavourable",  "UT", "n/a"))
 
-p4 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "Combined_outcome", label = TRUE, pt.size = 0.4, label.size = 5, repel = TRUE) + labs(title = bquote('Outcomes'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
+p4 <-  DimPlot(merged_filtered_tissue_cluster_sig, reduction = "umap", group.by = "Combined_outcome", label = FALSE, pt.size = 0.4, label.size = 6, repel = TRUE) + labs(title = bquote('Combined_outcome'))  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +
   labs(color = "Combined_outcome")  +theme(legend.position = "right", 
                legend.text = element_text(size = 15))  +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15)) +theme(legend.title = element_text(size=15))+
   theme(legend.text = element_text(size=15)) +theme(axis.text.x=element_text(size=15))+theme(axis.text.y=element_text(size=15))   + theme(text = element_text(size = 15)) 
 # +
 #   guides(color=guide_legend(nrow=4, ncol = 4, byrow=TRUE, bycol= TRUE, title="Groups"))
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/Combined_outcome.png",  width =8, height=5)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/Combined_outcome.png",  width =8, height=5)
 
 
-g <- grid.arrange(p1, p2, p3, p4, ncol = 2)
+g <- grid.arrange( p3, p4, ncol = 2)
 
-ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/uamps.png", g, width =15, height=10)
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/uamps.png", g, width =15, height=5)
 ```
 
 
 ## piecharts
 ```{r}
-mycolors = c(brewer.pal(name="Dark2", n = 8), brewer.pal(name="Paired", n = 12), brewer.pal(name="Set2", n = 12), brewer.pal(name="RdBu", n = 2), brewer.pal(name="Set1", n = 12), brewer.pal(name="Accent", n = 8), brewer.pal(name="Accent", n = 8))
+mycolors = c(brewer.pal(name="Paired", n = 12), brewer.pal(name="Set2", n = 12), brewer.pal(name="RdBu", n = 2), brewer.pal(name="Set1", n = 12), brewer.pal(name="Accent", n = 8), brewer.pal(name="Accent", n = 8))
 
 
 merged_filtered_tissue_cluster_sig_md <- merged_filtered_tissue_cluster_sig@meta.data
@@ -669,123 +744,184 @@ merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(sa
 
  merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
 pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
-  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
   coord_polar(theta = "y", start =5)+
   geom_col(color = "black")  +
-  theme_void()+ theme(text = element_text(size = 15))+
-  geom_text(aes(label = pct) , color = "white",
-            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Patients"))  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Patients"))  +
   scale_fill_manual(values = c(mycols))  +
-  labs(fill = "# Patients")
+  labs(fill = "% Patients")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
   
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartpatient.png", width =7, height=7)
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/piechartpatient.png", width =7, height=4)
   
   ######################
   
-merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Study_name == Study_name) ~  Study_name, merged_filtered_tissue_cluster_sig_md, length)))
-
-  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
-  mutate(pct= prop.table(V1) * 100) 
-  
-  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
-  arrange(desc(Study_name)) %>%
-  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
-  
-  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
-
- merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
-pie2 <-  ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Study_name)) + 
-  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
-  coord_polar(theta = "y", start =5)+
-  geom_col(color = "black")  +
-  theme_void()+ theme(text = element_text(size = 15))+
-  geom_text(aes(label = pct) , color = "white",
-            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Malignant cells"))  +
-  scale_fill_manual(values = c(mycols))  +
-  labs(fill = "# Patients")
-  
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartCELLS.png", width =7, height=7)
+# merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Study_name == Study_name) ~  Study_name, merged_filtered_tissue_cluster_sig_md, length)))
+# 
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+#   mutate(pct= prop.table(V1) * 100) 
+#   
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+#   arrange(desc(Study_name)) %>%
+#   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+#   
+#   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+# 
+#  merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+# pie2 <-  ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Study_name)) + 
+#   geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+#   coord_polar(theta = "y", start =5)+
+#   geom_col(color = "black")  +
+#   theme_void()+ theme(text = element_text(size = 20))+
+#   geom_text(aes(label = pct) , color = "black",
+#             position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Patients"))  +
+#   scale_fill_manual(values = c(mycols))  +
+#   labs(fill = "% Patients")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+#                legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+#   theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
+#   
+#   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartCELLS.png", width =7, height=7)
   
   #######################
   
-  merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(pre_post == pre_post) ~  pre_post, merged_filtered_tissue_cluster_sig_md, length)))
-
-  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
-  mutate(pct= prop.table(V1) * 100) 
-  
-  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
-  arrange(desc(pre_post)) %>%
-  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
-  
-  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
-
-merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
-pie3 <-   ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = pre_post)) + 
-  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
-  coord_polar(theta = "y", start =5)+
-  geom_col(color = "black")  +
-  theme_void()+ theme(text = element_text(size = 15))+
-  geom_text(aes(label = pct) , color = "white",
-            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# pre_post"))  +
-  scale_fill_manual(values = c(mycols))  +
-  labs(fill = "# Patients")
-  
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartpre_postCELLS.png", width =7, height=7)
+#   merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(pre_post == pre_post) ~  pre_post, merged_filtered_tissue_cluster_sig_md, length)))
+# 
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+#   mutate(pct= prop.table(V1) * 100) 
+#   
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+#   arrange(desc(pre_post)) %>%
+#   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+#   
+#   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+# 
+# merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+# pie3 <-   ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = pre_post)) + 
+#   geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+#   coord_polar(theta = "y", start =5)+
+#   geom_col(color = "black")  +
+#   theme_void()+ theme(text = element_text(size = 15))+
+#   geom_text(aes(label = pct) , color = "white",
+#             position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# pre_post"))  +
+#   scale_fill_manual(values = c(mycols))  +
+#   labs(fill = "# Patients")
+#   
+#   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartpre_postCELLS.png", width =7, height=7)
   
   ######################
+#   
+#   
+#     merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Combined_outcome == Combined_outcome) ~  Combined_outcome, merged_filtered_tissue_cluster_sig_md, length)))
+# 
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+#   mutate(pct= prop.table(V1) * 100) 
+#   
+#   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+#   arrange(desc(Combined_outcome)) %>%
+#   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+#   
+#   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+# 
+#  merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+#  pie4 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Combined_outcome)) + 
+#   geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+#   coord_polar(theta = "y", start =5)+
+#   geom_col(color = "black")  +
+#   theme_void()+ theme(text = element_text(size = 15))+
+#   geom_text(aes(label = pct) , color = "white",
+#             position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Combined_outcome"))  +
+#   scale_fill_manual(values = c(mycols))  +
+#   labs(fill = "# Patients")
+#  pie4
+#   
+#   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartOutcomeCELLS.png", width =7, height=7)
+#   
+#   ##
+#   
+#     merged_filtered_tissue_cluster_sig_md_agg_pre <- data.frame((aggregate(cbind(pre_post == pre_post) ~ sample_id  +pre_post, merged_filtered_tissue_cluster_sig_md, length)))
+#     # merged_filtered_tissue_cluster_sig_md_agg_pre <- data.frame((aggregate(cbind(pre_post == pre_post) ~ pre_post, merged_filtered_tissue_cluster_sig_md_agg_pre, length)))
+# 
+#       merged_filtered_tissue_cluster_sig_md_agg_pre <- merged_filtered_tissue_cluster_sig_md_agg_pre   %>%
+#   mutate(pct= prop.table(V1) * 100) 
+#   
+#   merged_filtered_tissue_cluster_sig_md_agg_pre <- merged_filtered_tissue_cluster_sig_md_agg_pre %>%
+#   arrange(desc(pre_post)) %>%
+#   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+#   
+#   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+# 
+# merged_filtered_tissue_cluster_sig_md_agg_pre$pct <- round(merged_filtered_tissue_cluster_sig_md_agg_pre$pct, 2) 
+# pie3 <-   ggplot(merged_filtered_tissue_cluster_sig_md_agg_pre, aes(x = "", y = V1, fill = pre_post)) + 
+#   geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+#   coord_polar(theta = "y", start =5)+
+#   geom_col(color = "black")  +
+#   theme_void()+ theme(text = element_text(size = 15))+
+#   geom_text(aes(label = pct) , color = "white",
+#             position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# pre_post"))  +
+#   scale_fill_manual(values = c(mycols))  +
+#   labs(fill = "# Patients")
+#   
+#   ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartpre_postCELLSpatients.png", width =7, height=7)
   
   
-    merged_filtered_tissue_cluster_sig_md_agg <- data.frame((aggregate(cbind(Combined_outcome == Combined_outcome) ~  Combined_outcome, merged_filtered_tissue_cluster_sig_md, length)))
+    merged_filtered_tissue_cluster_sig_md_dup <- merged_filtered_tissue_cluster_sig_md[!duplicated(merged_filtered_tissue_cluster_sig_md$sample_id_pre_post), ]
+
+merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(pre_post == pre_post) ~ pre_post + sample_id, merged_filtered_tissue_cluster_sig_md_dup, length)$pre_post))
 
   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
-  mutate(pct= prop.table(V1) * 100) 
+  mutate(pct= prop.table(Freq) * 100) 
   
   merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
-  arrange(desc(Combined_outcome)) %>%
+  arrange(desc(Var1)) %>%
   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
   
   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
 
  merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
- pie4 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = V1, fill = Combined_outcome)) + 
-  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
   coord_polar(theta = "y", start =5)+
   geom_col(color = "black")  +
-  theme_void()+ theme(text = element_text(size = 15))+
-  geom_text(aes(label = pct) , color = "white",
-            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# Combined_outcome"))  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Pre-post samples"))  +
   scale_fill_manual(values = c(mycols))  +
-  labs(fill = "# Patients")
- pie4
+  labs(fill = "% Pre-post samples")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
   
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartOutcomeCELLS.png", width =7, height=7)
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/piechartpreepost.png", width =7, height=4)
   
-  ##
   
-    merged_filtered_tissue_cluster_sig_md_agg_pre <- data.frame((aggregate(cbind(pre_post == pre_post) ~ sample_id  +pre_post, merged_filtered_tissue_cluster_sig_md, length)))
-    merged_filtered_tissue_cluster_sig_md_agg_pre <- data.frame((aggregate(cbind(pre_post == pre_post) ~ pre_post, merged_filtered_tissue_cluster_sig_md_agg_pre, length)))
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(Combined_outcome == Combined_outcome) ~ Combined_outcome + sample_id, merged_filtered_tissue_cluster_sig_md_dup, length)$Combined_outcome))
 
-      merged_filtered_tissue_cluster_sig_md_agg_pre <- merged_filtered_tissue_cluster_sig_md_agg_pre   %>%
-  mutate(pct= prop.table(V1) * 100) 
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
   
-  merged_filtered_tissue_cluster_sig_md_agg_pre <- merged_filtered_tissue_cluster_sig_md_agg_pre %>%
-  arrange(desc(pre_post)) %>%
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
   mutate(lab.ypos = cumsum(pct) - 0.5*pct)
   
   mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
 
-merged_filtered_tissue_cluster_sig_md_agg_pre$pct <- round(merged_filtered_tissue_cluster_sig_md_agg_pre$pct, 2) 
-pie3 <-   ggplot(merged_filtered_tissue_cluster_sig_md_agg_pre, aes(x = "", y = V1, fill = pre_post)) + 
-  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "white") +
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
   coord_polar(theta = "y", start =5)+
   geom_col(color = "black")  +
-  theme_void()+ theme(text = element_text(size = 15))+
-  geom_text(aes(label = pct) , color = "white",
-            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="# pre_post"))  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Combined_outcome"))  +
   scale_fill_manual(values = c(mycols))  +
-  labs(fill = "# Patients")
+  labs(fill = "% Combined_outcome")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
   
-  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/piechartpre_postCELLSpatients.png", width =7, height=7)
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_20_10_01_24/piechartCombined_outcome.png", width =7, height=4)
 ```
 
 
