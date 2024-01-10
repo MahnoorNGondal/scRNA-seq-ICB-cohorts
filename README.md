@@ -5,7 +5,8 @@ Currently, the following studies have been curated to devise this data.
 ![V1 of Figure_01 Data descriptor](https://github.com/MahnoorNGondal/scRNA-seq-ICB-cohorts/assets/89783694/bcaf9782-a9f1-4536-9f9a-86dd2a2cae18)
 
 
-![image](https://github.com/MahnoorNGondal/scRNA-seq-ICB-cohorts/assets/89783694/73e501b7-046d-4d93-ae7a-64a6554a1a2b)
+![image](https://github.com/MahnoorNGondal/scRNA-seq-ICB-cohorts/assets/89783694/b87ec7eb-f4ec-4235-b558-2843a0e21bd6)
+
 
 
 
