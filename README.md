@@ -1,8 +1,9 @@
 # scRNA-seq-ICB-cohorts
 This repository contained single-cell RNA-seq datasets with ICB treated patients
 Currently, the following studies have been curated to devise this data. 
+![V2 of Figure_01 Data descriptor - revised](https://github.com/user-attachments/assets/3acb7376-96bb-4e92-aaba-2c37c42241e6)
 
-![V1 of Figure_01 Data descriptor](https://github.com/MahnoorNGondal/scRNA-seq-ICB-cohorts/assets/89783694/bcaf9782-a9f1-4536-9f9a-86dd2a2cae18)
+
 
 
 ![image](https://github.com/user-attachments/assets/1d350d8c-08be-4b0d-8fbf-c9b4c410d9ec)
