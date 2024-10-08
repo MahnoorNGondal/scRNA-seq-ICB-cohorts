@@ -1,0 +1,191 @@
+PMID,Sample,Sex,Treatment or Mode of Action
+31588021,H18,M,Durvalumab/Tremelimumab
+,H21,M,Resection
+,H23,F,Durvalumab/Tremelimumab
+,C25,F,Durvalumab/Tremelimumab
+,C26,M,Durvalumab/Tremelimumab
+,H28,F,Durvalumab/Tremelimumab
+,C29,M,Durvalumab/Tremelimumab
+,H30,M,Durvalumab/Tremelimumab
+,C35,F,Pembrolizumab
+,H37,M,Durvalumab/Tremelimumab
+,H38,M,Resection
+,C39,M,Pembrolizumab
+,H34,M,Durvalumab/Tremelimumab
+,C42,M,Pembrolizumab
+,C46,M,Pembrolizumab
+,C56,F,Durvalumab/Tremelimumab
+,C60,F,Resection
+,H65,F,Durvalumab/Tremelimumab
+,C66,F,Pembrolizumab
+31359002,su001,Unknown,Pembrolizumab
+,su002,Unknown,Pembrolizumab
+,su003,Unknown,Pembrolizumab
+,su004,Unknown,Cemiplimab
+,su005,Unknown,Pembrolizumab
+,su006,Unknown,Pembrolizumab
+,su007,Unknown,Pembrolizumab
+,su008,Unknown,Pembrolizumab
+,su009,Unknown,Cemiplimab
+,su010-S,Unknown,Pembrolizumab
+,su010,Unknown,Pembrolizumab
+,su011,Unknown,Cemiplimab
+,su012,Unknown,Cemiplimab
+,su013,Unknown,Pembrolizumab
+,su014,Unknown,Cemiplimab
+35706413,MEL-001,F,Ipilimumab/Nivolumab
+,MEL-002,M,Nivolumab
+,MEL-004,F,Ipilimumab
+,MEL-005,M,Unknown
+,MEL-006,F,Ipilimumab
+,MEL-008,M,Ipilimumab/Nivolumab
+,MEL-009,F,Ipilimumab/Nivolumab
+,MEL-010,M,Ipilimumab/Nivolumab
+,MEL-011,F,Ipilimumab/Nivolumab
+,MEL-014,M,Pembrolizumab
+,MEL-015,M,Pembrolizumab
+,MEL-016,M,Unknown
+,MEL-017,M,Pembrolizumab
+,MEL-018,M,Unknown
+,MEL-019,M,Pembrolizumab
+,MEL-020,M,Unknown
+,MEL-021,M,interferon Alfa-2b
+,MEL-022,F,Nivolumab
+,MEL-023,F,Ipilimumab
+,MEL-024,F,Pembrolizumab
+,MEL-025,F,Pembrolizumab
+,MEL-026,F,Ipilimumab/Nivolumab
+,MEL-027,M,Pembrolizumab
+,MEL-028,M,Ipilimumab/Nivolumab
+,MEL-029,M,Unknown
+,MEL-031,M,Unknown
+,MEL-033,M,Ipilimumab/Nivolumab
+38181739,sc5rCMA061,M,Pembrolizumab
+,sc5rCMA066,M,Pembrolizumab
+,sc5rCMA070,F,Nivolumab
+,sc5rCMA074,F,Nivolumab
+,sc5rCMA136,M,Pembrolizumab
+,sc5rCMA141,M,Nivolumab + Ipilimumab
+,sc5rCMA144,M,Nivolumab + Ipilimumab
+,sc5rCMA149,M,Pembrolizumab
+,sc5rCMA152,M,Nivolumab + Ipilimumab
+,sc5rCMA155,M,Nivolumab + Ipilimumab
+,sc5rCMA188,F,Pembrolizumab
+,sc5rCMA192,F,Nivolumab + Ipilimumab
+,sc5rCMA196,F,Nivolumab + Ipilimumab
+,scrCMA036,F,Nivolumab
+,scrCMA038,F,Nivolumab
+,scrCMA040,M,Nivolumab
+,scrCMA041,M,Nivolumab
+,scrCMA044,F,Nivolumab
+,scrCMA046,F,Nivolumab
+,scrCMA048,M,Nivolumab
+,scrCMA049,M,Nivolumab
+,scrCMA050,M,Nivolumab
+,scrCMA054,F,Nivolumab
+,scrCMA055,F,Nivolumab
+,scrCMA063,F,Nivolumab
+,scrCMA064,F,Nivolumab
+,scrCMA068,M,Nivolumab
+,scrCMA072,M,Nivolumab
+,scrCMA076,F,Pembrolizumab
+,scrCMA077,F,Pembrolizumab
+,scrCMA087,M,Pembrolizumab
+,scrCMA088,F,Pembrolizumab
+,scrCMA089,F,Pembrolizumab
+,scrCMA090,F,Pembrolizumab
+,scrCMA091,F,Pembrolizumab
+,scrCMA093,M,Nivolumab + Ipilimumab
+,scrCMA094,F,Nivolumab
+,scrCMA109,F,Pembrolizumab
+,scrCMA112,M,Nivolumab + Ipilimumab
+,scrCMA118,F,Pembrolizumab
+,scrCMA119,F,Nivolumab + Ipilimumab
+,scrCMA120,F,Pembrolizumab
+,scrCMA121,M,Nivolumab + Ipilimumab
+,scrCMA129,F,Nivolumab + Ipilimumab
+,scrCMA130,F,Pembrolizumab
+,scrCMA131,M,Nivolumab + Ipilimumab
+27124452,Mel53,F,None
+,Mel58,M,Ipilimumab
+,Mel60,M,"Trametinib, ipilimumab"
+,Mel71,M,None
+,Mel72,F,"IL-2, nivolumab, ipilimumab + anti- KIR-Ab"
+,Mel74,M,Nivolumab
+,Mel75,M,"Ipilimumab + nivolumab, WDVAX"
+,Mel78,M,"WDVAX, ipilimumab + nivolumab"
+,Mel79,M,None
+,Mel80,F,None
+,Mel81,F,None
+,Mel82,F,None
+,Mel84,M,None
+,Mel88,F,Tremelimumab + MEDI3617
+,Mel89,M,None
+,Mel94,F,"IFN, ipilimumab + nivolumab"
+30388455,Mel126,M,"Ipilimumab, nivolumab"
+,Mel04.3,M,Ipilimumab
+,Mel110,M,"ipilimumab + angiopoietin 2 inhibitor, Temezlolamide, Pembrolizumab"
+,Mel121.1,M,S/p Pembrolizumab
+,Mel106,M,Prior treatment: nivolumab + ipilimumab
+,Mel75.1,M,"Ipilimumab + nivolumab, WDVAX, Pembrolizumab"
+,Mel98,F,"S/p IFN, s/p ipilimumab+GMCSF"
+,Mel102,F,S/p nivolumab + ipilimumab
+,Mel129PA,M,None
+,Mel129PB,M,None
+,Mel116,M,None
+,Mel103,M,None
+,Mel105,M,None
+,Mel112,M,None
+,Mel194,M,"Nivolumab + lirilumab (anti-kit), Nivolumab, Ipilimumab, Pan-RAF-inhibitor, Pembrolizumab"
+,Mel478,F,None
+,Mel128,M,None
+33711272,P55,M,aPD-1
+,P915,M,aPD-1 + aCTLA-4
+,P913,M,aPD1 + VEGF TKI
+,P906,M,aPD-1
+,P912,M,aPD1 + VEGF TKI
+,P76,F,No ICB
+,P916,M,No ICB
+,P90,F,No ICB
+33958794,BIOKEY_1,Unknown,Pembrolizumab
+,BIOKEY_10,Unknown,Pembrolizumab
+,BIOKEY_11,Unknown,Pembrolizumab
+,BIOKEY_12,Unknown,Pembrolizumab
+,BIOKEY_13,Unknown,Pembrolizumab
+,BIOKEY_14,Unknown,Pembrolizumab
+,BIOKEY_15,Unknown,Pembrolizumab
+,BIOKEY_16,Unknown,Pembrolizumab
+,BIOKEY_17,Unknown,Pembrolizumab
+,BIOKEY_18,Unknown,Pembrolizumab
+,BIOKEY_19,Unknown,Pembrolizumab
+,BIOKEY_2,Unknown,Pembrolizumab
+,BIOKEY_20,Unknown,Pembrolizumab
+,BIOKEY_21,Unknown,Pembrolizumab
+,BIOKEY_22,Unknown,Pembrolizumab
+,BIOKEY_23,Unknown,Pembrolizumab
+,BIOKEY_24,Unknown,Pembrolizumab
+,BIOKEY_25,Unknown,Pembrolizumab
+,BIOKEY_26,Unknown,Pembrolizumab
+,BIOKEY_27,Unknown,Pembrolizumab
+,BIOKEY_28,Unknown,Pembrolizumab
+,BIOKEY_29,Unknown,Pembrolizumab
+,BIOKEY_3,Unknown,Pembrolizumab
+,BIOKEY_30,Unknown,Pembrolizumab
+,BIOKEY_31,Unknown,Pembrolizumab
+,BIOKEY_4,Unknown,Pembrolizumab
+,BIOKEY_5,Unknown,Pembrolizumab
+,BIOKEY_6,Unknown,Pembrolizumab
+,BIOKEY_7,Unknown,Pembrolizumab
+,BIOKEY_8,Unknown,Pembrolizumab
+,BIOKEY_9,Unknown,Pembrolizumab
+,BIOKEY_32,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_33,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_34,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_35,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_36,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_37,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_38,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_39,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_40,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_41,Unknown,neoadjuvant+Pembrolizumab
+,BIOKEY_42,Unknown,neoadjuvant+Pembrolizumab
