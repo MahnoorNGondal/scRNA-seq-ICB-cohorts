@@ -1,0 +1,2670 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the tissues 
+```{r}
+seurat_MBM_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Christopher/version_05_05_05_24/seurat_MBM_Christopher_m_epi_subset_revised.RDS")
+seurat_BCC_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/BCC_York/version_05_05_05_24/seurat_BCC_SCC_tumor_subset_revised.RDS")
+seurat_Arnon_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/melanoma_Arnon/version_11_05_05_24/seurat_Arnon_data_metadata_M_mel_subset_revised.RDS")
+seurat_Bassez_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/breast_bassez/version_09_05_05_24/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_revised.RDS")
+seurat_Liver_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Liver_Ma/version_06_05_05_24/seurat_Liver_seurat_set_1_2_epi_subset_revised.RDS")
+seurat_Bi_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_09_05_05_24/Bi_seurat_md_na_tumor_subset_ccRCC_revised.RDS")
+seurat_joanna_revised <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Joanna/version_01_05_05_24/seurat_melanoma_joanna_revised.RDS")
+
+seurat_joanna_revised_md <- seurat_joanna_revised@meta.data
+
+seurat_melanoma_joanna_counts <- seurat_joanna_revised@assays$RNA@counts
+seurat_joanna_revised <- CreateSeuratObject(seurat_melanoma_joanna_counts)
+seurat_joanna_revised <- AddMetaData(seurat_joanna_revised, 
+                                             seurat_joanna_revised_md)
+
+merged_tissue_cluster <- merge(seurat_MBM_revised, y = c(seurat_BCC_revised, 
+                                                                      seurat_Arnon_revised, 
+                                                                      seurat_Bassez_revised, 
+                                                                      seurat_Liver_revised, 
+                                                                      seurat_Bi_revised,
+                                                                      seurat_joanna_revised), 
+                      project = "ICI")
+
+#updated-revised
+saveRDS(merged_tissue_cluster, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_01_05_09_24/merged_tissue_cluster_revised.RDS")
+
+merged_tissue_cluster <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_01_05_09_24/merged_tissue_cluster_revised.RDS")
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Cancer_type == "Melanoma_derived_brain_metastases", "MBM", 
+                                                   merged_tissue_cluster$Cancer_type)
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Cancer_type_update == "Basal_Cell_Carcinoma", "BCC", 
+                                                   merged_tissue_cluster$Cancer_type_update)
+
+merged_tissue_cluster$Cancer_type_update <- ifelse(merged_tissue_cluster$Cancer_type_update == "Melanoma", "Mel", 
+                                                   merged_tissue_cluster$Cancer_type_update)
+
+
+merged_tissue_cluster$outcome <- ifelse(merged_tissue_cluster$outcome == "Not_app", "n/a", merged_tissue_cluster$outcome)
+
+merged_tissue_cluster$outcome <- ifelse(merged_tissue_cluster$outcome == "PD-1" |
+                                                   merged_tissue_cluster$outcome == "PD-L1/CTLA-4" , "n/a", merged_tissue_cluster$outcome)
+
+merged_tissue_cluster$Combined_outcome <- ifelse(merged_tissue_cluster$outcome == "CR"  |
+                                                   merged_tissue_cluster$outcome == "PR"  |
+                                                   merged_tissue_cluster$outcome == "R" |
+                                                   merged_tissue_cluster$outcome == "SD"|
+                                                   merged_tissue_cluster$outcome == "E"|
+                                                   merged_tissue_cluster$outcome == "OR" , "Favourable", merged_tissue_cluster$outcome)
+
+merged_tissue_cluster$Combined_outcome <- ifelse(merged_tissue_cluster$outcome == "NE" |
+                                                   merged_tissue_cluster$outcome == "NR" , "Unfavourable", merged_tissue_cluster$Combined_outcome)
+
+## cell types
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types == "?", "unclassified",
+                                                  merged_tissue_cluster$cell_types)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Tumor_1" |
+                                                    merged_tissue_cluster$cell_types_update == "Tumor_2" |
+                                                    merged_tissue_cluster$cell_types_update == "malignant" |
+                                                    merged_tissue_cluster$cell_types_update == "Putative Tumor" |
+                                                    merged_tissue_cluster$cell_types_update == "Mal" |
+                                                    merged_tissue_cluster$cell_types_update == "Cancer_cell" |
+                                                    merged_tissue_cluster$cell_types_update == "Malignant cell", "Malignant",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "B cell" |
+                                                    merged_tissue_cluster$cell_types_update == "B Cell" |
+                                                    merged_tissue_cluster$cell_types_update == "B_cell" |
+                                                    merged_tissue_cluster$cell_types_update == "B_cells_1" |
+                                                    merged_tissue_cluster$cell_types_update == "B_cells_2" |
+                                                    merged_tissue_cluster$cell_types_update == "B.cell", "B_cell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CAF" |
+                                                    merged_tissue_cluster$cell_types_update == "CAFs" , "CAFs",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Treg" |
+                                                    merged_tissue_cluster$cell_types_update == "Tregs" , "Treg",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "plasma cell" |
+                                                    merged_tissue_cluster$cell_types_update == "Plasma_cells" , "Plasma_cells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Myeloid_cell" |
+                                                    merged_tissue_cluster$cell_types_update == "Myeloid" , "Myeloid_cell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Endo." |
+                                                    merged_tissue_cluster$cell_types_update == "Endothelial" |
+                                                    merged_tissue_cluster$cell_types_update == "Endothelial_cell" , "Endothelial",
+                                                  merged_tissue_cluster$cell_types_update)
+
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "T.cell" |
+                                                    merged_tissue_cluster$cell_types_update == "T Cell" |
+                                                    merged_tissue_cluster$cell_types_update == "T cell" |
+                                                    merged_tissue_cluster$cell_types_update == "T_cell" , "T_cell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Macrophage" |
+                                                    merged_tissue_cluster$cell_types_update == "Macrophages" , "Macrophage",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "IL-8 high neutrophils" |
+                                                    merged_tissue_cluster$cell_types_update == "IFN-responsive neutrophils" |
+                                                    merged_tissue_cluster$cell_types_update == "degranulating\nneutrophil"  |
+                                                    merged_tissue_cluster$cell_types_update == "calprotectin-high neutrophils" , "Neutrophil",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "hypoxia-associated monocyte-derived cluster 1" |
+                                                    merged_tissue_cluster$cell_types_update == "hypoxia-associated monocyte-derived cluster 2" |
+                                                    merged_tissue_cluster$cell_types_update == "monocytes/macrophages" , "Monocyte",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD4_T_cells" |
+                                                    merged_tissue_cluster$cell_types_update == "T.CD4" , "CD4_Tcells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "reactive microglia" , "Microglia",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "pDC" |
+                                                    merged_tissue_cluster$cell_types_update == "pDCs" , "pDCs",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "?" |
+                                                    merged_tissue_cluster$cell_types_update == "unclassified", "Unclassified",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD8_mem" |
+                                                    merged_tissue_cluster$cell_types_update == "CD8_mem_T_cells" , "CD8mem_Tcells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD8_act" |
+                                                    merged_tissue_cluster$cell_types_update == "CD8_act_T_cells" , "CD8act_Tcells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD8_ex" |
+                                                    merged_tissue_cluster$cell_types_update == "CD8_ex_act" |
+                                                    merged_tissue_cluster$cell_types_update == "CD8_ex_T_cells" , "CD8ex_Tcells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "T.CD8"  , "CD8_Tcells",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Tcell_prolif"  , "Prolif_Tcell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Normal Tissue" & 
+                                                    merged_tissue_cluster$FinalCellType == "Endothelial", "Endothelial",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Normal Tissue" & 
+                                                    merged_tissue_cluster$FinalCellType == "Fibroblast", "Fibroblast",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "Naive"  , "Naive_Tcell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD8_eff"  , "CD8eff_Tcell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "CD8_naive"  , "CD8naive_Tcell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "HPC-like"  , "HPC_like",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "neural/glial"  , "Neural_glial",
+                                                  merged_tissue_cluster$cell_types_update)
+
+merged_tissue_cluster$cell_types_update <- ifelse(merged_tissue_cluster$cell_types_update == "NK_cells"  , "NK_Tcell",
+                                                  merged_tissue_cluster$cell_types_update)
+
+
+merged_tissue_cluster <- subset(merged_tissue_cluster, subset = cell_types_update != "Malignant")
+
+
+
+```
+
+
+## data quality checks
+```{r}
+merged_tissue_cluster <- SetIdent(merged_tissue_cluster, value = merged_tissue_cluster@meta.data$Study_name  )
+
+merged_tissue_cluster <- PercentageFeatureSet(merged_tissue_cluster, "^MT-", col.name = "percent.mito")
+merged_tissue_cluster <- PercentageFeatureSet(merged_tissue_cluster, "^RP[SL]", col.name = "percent.ribo")
+
+feats <- c("nFeature_RNA", "nCount_RNA", "percent.mito")
+VlnPlot(merged_tissue_cluster, group.by = "Study_name", features = feats, pt.size = 0, ncol = 3) +
+    NoLegend()
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/vln2.png", width = 15, height=10)
+
+FeatureScatter(merged_tissue_cluster, "nCount_RNA", "nFeature_RNA", group.by = "Study_name", pt.size = 0.5)
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/FS2.png", width = 15, height=10)
+
+before_filtering <- merged_tissue_cluster
+saveRDS(before_filtering, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/before_filtering.RDS")
+### Filtering
+# selected_c <- WhichCells(merged_tissue_cluster, expression = nFeature_RNA >= 200)
+selected_f <- rownames(merged_tissue_cluster)[Matrix::rowSums(merged_tissue_cluster) > 3]
+
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster, features = selected_f)
+dim(merged_tissue_cluster_update_filt)
+
+after_lowqualitycellandfeatures_filtering <- merged_tissue_cluster_update_filt
+
+selected_mito <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.mito < 20)
+selected_ribo <- WhichCells(merged_tissue_cluster_update_filt, expression = percent.ribo > 5)
+
+# and subset the object to only keep those cells
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_mito)
+
+after_mit_filtering <- merged_tissue_cluster_update_filt
+saveRDS(after_mit_filtering, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/after_mit_filtering.RDS")
+
+merged_tissue_cluster_update_filt <- subset(merged_tissue_cluster_update_filt, cells = selected_ribo)
+
+after_rb_filtering <- merged_tissue_cluster_update_filt
+saveRDS(after_rb_filtering, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/after_rb_filtering.RDS")
+
+merged_tissue_cluster_update_filt <- SetIdent(merged_tissue_cluster_update_filt, value = merged_tissue_cluster_update_filt@meta.data$Study_name)
+
+merged_tissue_cluster_update_filt@active.ident <- factor(merged_tissue_cluster_update_filt@active.ident,
+                                                           levels=c( "Ma" ,"Yost", "Tirosh", "Pozniak",  "Alvarez_Breckenridge", "Jerby_Arnon", "Bassez",
+                                                                     "Bi"))
+## plot filtered data
+feats <- c("percent.mito", "percent.ribo", "nFeature_RNA", "nCount_RNA" )
+VlnPlot(merged_tissue_cluster_update_filt, group.by = "Study_name", features = feats, pt.size =0, ncol = 4) +
+    NoLegend()  +
+  labs(fill = "% Patients")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "none", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15))  + 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black"))
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/vln1afterfilter3.png", width = 10, height=4)
+
+#saveRDS(merged_tissue_cluster_update_filt, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/merged_tissue_cluster_update_filt2.RDS")
+
+
+```
+## removing patients with low number of malignant cells
+```{r}
+
+
+
+merged_filtered_tissue_cluster_sig_md <- merged_tissue_cluster_update_filt@meta.data
+merged_filtered_tissue_cluster_sig_md_subset <- merged_filtered_tissue_cluster_sig_md[merged_filtered_tissue_cluster_sig_md$donor_id_cell_types_pre_post %in% names(which(table(merged_filtered_tissue_cluster_sig_md$donor_id_cell_types_pre_post) >= 20)), ]
+
+merged_tissue_cluster_update_filt$enough_cells <- ifelse(merged_tissue_cluster_update_filt$donor_id_cell_types_pre_post %in% merged_filtered_tissue_cluster_sig_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+merged_tissue_cluster_update_filt <-  subset(x = merged_tissue_cluster_update_filt, subset = enough_cells == "enough") ## after_CC_filtering
+
+# merged_tissue_cluster_update_filt <- seurat_analysis(merged_tissue_cluster_update_filt)
+
+#saveRDS(merged_tissue_cluster_update_filt_other_mal, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig.RDS")
+
+# merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig_2DF.RDS")
+```
+
+
+
+
+## Calculating QC
+```{r}
+
+# saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_02_05_10_24/merged_filtered_tissue_cluster_sig.RDS")
+
+
+before_filtering <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/before_filtering.RDS")
+after_mit_filtering <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/after_mit_filtering.RDS")
+after_rb_filtering <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/after_rb_filtering.RDS")
+
+###
+
+before_filtering_md <- before_filtering@meta.data
+before_filtering_md_agg <- data.frame(table( before_filtering_md$Study_name))
+before_filtering_md_agg$QC <- "Before_QC"
+
+#after_lowqualitycellandfeatures_filtering
+after_mit_filtering_md <- after_mit_filtering@meta.data
+after_mit_filtering_md_agg <- data.frame(table(after_mit_filtering_md$Study_name))
+after_mit_filtering_md_agg$QC <- "MT_filter"
+
+after_rb_filtering_md <- after_rb_filtering@meta.data
+after_rb_filtering_md_agg <- data.frame(table(after_rb_filtering_md$Study_name))
+after_rb_filtering_md_agg$QC <- "RP[SL]_filter"
+
+# after_DF_filtering_md <- after_DF_filtering@meta.data
+# after_DF_filtering_md_agg <- data.frame(table(after_DF_filtering_md$Study_name))
+# after_DF_filtering_md_agg$QC <- "DF_filter"
+
+after_CC_filtering_md <- merged_tissue_cluster_update_filt@meta.data
+after_CC_filtering_md_agg <- data.frame(table(after_CC_filtering_md$Study_name))
+after_CC_filtering_md_agg$QC <- "CC_filter"
+
+combined <- rbind(before_filtering_md_agg, 
+                  after_mit_filtering_md_agg,
+                  after_rb_filtering_md_agg,
+                  after_CC_filtering_md_agg)
+
+  combined$QC <- factor (combined$QC, levels = c ("Before_QC", "MT_filter", "RP[SL]_filter", "CC_filter"))
+  
+  combined$Var1 <- factor(combined$Var1, levels=c( "Ma" ,"Yost", "Tirosh", "Pozniak",  "Alvarez_Breckenridge", "Jerby_Arnon", "Bassez",
+                                                                     "Bi"))
+
+ggbarplot(combined, "Var1", "Freq",
+  fill = "QC", color = "QC", palette = "Paired",
+  label = FALSE,
+  position = position_dodge(0.9)) + theme_classic()   +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 15)) + theme(strip.text.y = element_text(size = 15))  + ylab("Cell count")  +
+  xlab(NULL)  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=15)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 15)) + theme(text = element_text(size = 20))  + theme(legend.position = "right")  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +
+       theme(axis.text.x=element_text(size=20, angle=45,hjust=1,vjust=1)) + 
+    theme(axis.text.x = element_text( colour = "black")) + 
+    theme(axis.text.y = element_text( colour = "black")) + theme(strip.text = element_text(size = 15)) 
+
+
+ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/QC.png",  width =7, height=6)
+
+
+
+```
+
+
+
+## piecharts
+```{r}
+mycolors = c(brewer.pal(name="Paired", n = 12), brewer.pal(name="Set2", n = 12), brewer.pal(name="RdBu", n = 2), brewer.pal(name="Set1", n = 12), brewer.pal(name="Accent", n = 8), brewer.pal(name="Accent", n = 8))
+
+
+merged_filtered_tissue_cluster_sig_md <- merged_tissue_cluster_update_filt@meta.data
+
+merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(donor_id_pre_post == donor_id_pre_post) ~ Study_name + donor_id_pre_post, merged_filtered_tissue_cluster_sig_md, length)$Study_name))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Patients"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "% Patients")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/piechartpatient.png", width =7, height=4)
+  
+  ######################
+  
+  
+    merged_filtered_tissue_cluster_sig_md_dup <- merged_filtered_tissue_cluster_sig_md[!duplicated(merged_filtered_tissue_cluster_sig_md$donor_id_pre_post), ]
+
+merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(pre_post == pre_post) ~ pre_post + donor_id, merged_filtered_tissue_cluster_sig_md_dup, length)$pre_post))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Pre-post samples"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "% Pre-post samples")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/piechartpreepost.png", width =7, height=4)
+  
+  
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(Combined_outcome == Combined_outcome) ~ Combined_outcome + donor_id, merged_filtered_tissue_cluster_sig_md_dup, length)$Combined_outcome))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% Combined_outcome"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "% Combined_outcome")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/piechartCombined_outcome.png", width =7, height=4)
+  
+  
+    merged_filtered_tissue_cluster_sig_md_agg <- data.frame(table(aggregate(cbind(cell_types_update == cell_types_update) ~ cell_types_update + donor_id, merged_filtered_tissue_cluster_sig_md_dup, length)$cell_types_update))
+
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(Freq) * 100) 
+  
+  merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg %>%
+  arrange(desc(Var1)) %>%
+  mutate(lab.ypos = cumsum(pct) - 0.5*pct)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF", mycolors)
+
+ merged_filtered_tissue_cluster_sig_md_agg$pct <- round(merged_filtered_tissue_cluster_sig_md_agg$pct, 2) 
+pie1 <- ggplot(merged_filtered_tissue_cluster_sig_md_agg, aes(x = "", y = Freq, fill = Var1)) + 
+  geom_bar(stat = "identity", width = 1, position = position_fill(), color = "black") +
+  coord_polar(theta = "y", start =5)+
+  geom_col(color = "black")  +
+  theme_void()+ theme(text = element_text(size = 20))+
+  geom_text(aes(label = pct) , color = "black",
+            position = position_stack(vjust = 0.5)) + guides(fill=guide_legend(title="% cell_types_update"))  +
+  scale_fill_manual(values = c(mycols))  +
+  labs(fill = "% cell_types_update")  + theme(plot.title=element_text(hjust=0.5, vjust=0.1 )) +  theme(plot.title = element_text(size=15)) +theme(legend.position = "right", 
+               legend.text = element_text(size = 15)) +theme(legend.title = element_text(size=15))+
+  theme(legend.text = element_text(size=15))  + theme(text = element_text(size = 15)) 
+  
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/piechartcell_types_update.png", width =7, height=4)
+  
+  
+  merged_filtered_tissue_cluster_sig_md <- merged_tissue_cluster_update_filt@meta.data
+  
+      merged_filtered_tissue_cluster_sig_md_agg <- data.frame(aggregate(cbind(cell_types_update == cell_types_update) ~ cell_types_update, merged_filtered_tissue_cluster_sig_md, length))
+
+    merged_filtered_tissue_cluster_sig_md_agg <- merged_filtered_tissue_cluster_sig_md_agg   %>%
+  mutate(pct= prop.table(V1) * 100) 
+  
+merged_filtered_tissue_cluster_sig_md_agg$cell_types_update <- factor(merged_filtered_tissue_cluster_sig_md_agg$cell_types_update, levels = rev(unique(merged_filtered_tissue_cluster_sig_md_agg$cell_types_update[order(merged_filtered_tissue_cluster_sig_md_agg$pct, decreasing=T)])), ordered=TRUE)
+
+
+ggbarplot(merged_filtered_tissue_cluster_sig_md_agg, "cell_types_update", "pct",
+  fill = "cell_types_update", color = "cell_types_update", 
+  label = FALSE, lab.col = "white", lab.pos = "in", 
+  position = position_stack()) + ylab("% of cells") + xlab(NULL)+theme(legend.position = "top", 
+               legend.text = element_text(size = 10))  + theme(axis.text.x = element_text(angle = 90, vjust = 1, hjust=1))  +theme(axis.text.x=element_text(size=20))+theme(axis.text.y=element_text(size=20)) + theme(legend.title = element_text(size=20))+
+  theme(legend.text = element_text(size=20)) +                                                               # Change font size
+  theme(strip.text.x = element_text(size = 20)) + theme(text = element_text(size = 20))+ theme(legend.position = "none") 
+
+
+  ggsave("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_04_07_25_24/FSstacked.png", width = 9, height = 5)
+```
+
+
+
+```{r}
+merged_filtered_tissue_cluster_sig_malignant <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_10_23_08_23/merged_filtered_tissue_cluster_sig_2DF.RDS")
+merged_filtered_tissue_cluster_sig_malignant$cell_types_update <- "Malignant"
+merged_filtered_tissue_cluster_sig_malignant$donor_id <- merged_filtered_tissue_cluster_sig_malignant$sample_id
+
+merged_filtered_tissue_cluster_sig_malignant$donor_id_pre_post <- paste0(merged_filtered_tissue_cluster_sig_malignant$donor_id, "_", merged_filtered_tissue_cluster_sig_malignant$pre_post)
+
+
+# merged_tissue_cluster_update_filt_other <- merged_tissue_cluster_update_filt
+# 
+# 
+# saveRDS(merged_tissue_cluster_update_filt_other, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_tissue_cluster_update_filt_other.RDS")
+merged_tissue_cluster_update_filt_other <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_tissue_cluster_update_filt_other.RDS")
+
+#################
+
+merged_tissue_cluster_update_filt_other_mal <- merge(merged_tissue_cluster_update_filt_other, merged_filtered_tissue_cluster_sig_malignant)
+
+saveRDS(merged_tissue_cluster_update_filt_other_mal, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_tissue_cluster_update_filt_other_mal_update.RDS")
+merged_tissue_cluster_update_filt_other_mal <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_tissue_cluster_update_filt_other_mal_update.RDS")
+
+```
+
+
+## removing unnecessary columns
+```{r}
+
+columns_to_keep <- c("donor_id", "pre_post",  "cell_types", "cell_types_update",
+                     "outcome", "Combined_outcome", "cell_id", "Cancer_type", "Cancer_type_update", "Study_name", "Primary_or_met")
+
+merged_tissue_cluster_update_filt_other_mal@meta.data <- merged_tissue_cluster_update_filt_other_mal@meta.data %>% dplyr::select(all_of(columns_to_keep))
+
+merged_tissue_cluster_update_filt_other_mal@meta.data$outcome <- ifelse(is.na(merged_tissue_cluster_update_filt_other_mal@meta.data$outcome) | merged_tissue_cluster_update_filt_other_mal@meta.data$outcome == "", "n/a", merged_tissue_cluster_update_filt_other_mal@meta.data$outcome)
+
+
+
+#################
+
+merged_tissue_cluster_update_filt_other_mal$Cancer_type <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Yost", "Basal_Cell_Carcinoma", merged_tissue_cluster_update_filt_other_mal$Cancer_type )
+
+merged_tissue_cluster_update_filt_other_mal$Cancer_type <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Pozniak" | merged_tissue_cluster_update_filt_other_mal$Study_name == "Tirosh" | merged_tissue_cluster_update_filt_other_mal$Study_name == "Jerby_Arnon", "Melanoma", merged_tissue_cluster_update_filt_other_mal$Cancer_type )
+
+#################
+#################
+
+merged_tissue_cluster_update_filt_other_mal$Cancer_type_update <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Yost", "BCC", merged_tissue_cluster_update_filt_other_mal$Cancer_type_update )
+
+merged_tissue_cluster_update_filt_other_mal$Cancer_type_update <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Pozniak" | merged_tissue_cluster_update_filt_other_mal$Study_name == "Tirosh" | merged_tissue_cluster_update_filt_other_mal$Study_name == "Jerby_Arnon", "Mel", merged_tissue_cluster_update_filt_other_mal$Cancer_type_update )
+
+#################
+## pasting
+merged_tissue_cluster_update_filt_other_mal$donor_id_pre_post <- paste0(merged_tissue_cluster_update_filt_other_mal$donor_id, "_", merged_tissue_cluster_update_filt_other_mal$pre_post)
+
+merged_tissue_cluster_update_filt_other_mal$donor_id_outcome <- paste0(merged_tissue_cluster_update_filt_other_mal$donor_id, "_", merged_tissue_cluster_update_filt_other_mal$outcome)
+
+merged_tissue_cluster_update_filt_other_mal$donor_id_cell_types <- paste0(merged_tissue_cluster_update_filt_other_mal$donor_id, "_", merged_tissue_cluster_update_filt_other_mal$cell_types)
+
+merged_tissue_cluster_update_filt_other_mal$donor_id_cell_types_pre_post <- paste0(merged_tissue_cluster_update_filt_other_mal$donor_id_cell_types, "_", merged_tissue_cluster_update_filt_other_mal$pre_post)
+
+merged_tissue_cluster_update_filt_other_mal$donor_id_pre_post_outcome <- paste0(merged_tissue_cluster_update_filt_other_mal$donor_id_pre_post, "_", merged_tissue_cluster_update_filt_other_mal$outcome )
+
+################
+
+merged_tissue_cluster_update_filt_other_mal$organism_ontology_term_id <- "NCBITaxon:9606"
+
+#########
+merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "ccRCC",
+                                                                              "UBERON:0002113", "not")
+merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Melanoma_derived_brain_metastases",
+                                                                              "UBERON:0000955",
+                                                                              merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "ER+" |
+                                                                                merged_tissue_cluster_update_filt_other_mal$Cancer_type == "HER2+" |
+                                                                                merged_tissue_cluster_update_filt_other_mal$Cancer_type == "TNBC",
+                                                                              "UBERON:0000310",
+                                                                              merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Basal_Cell_Carcinoma" | merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Melanoma",
+                                                                              "UBERON:0002097",
+                                                                              merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "HCC" | merged_tissue_cluster_update_filt_other_mal$Cancer_type == "iCCA",
+                                                                              "UBERON:0002107",
+                                                                              merged_tissue_cluster_update_filt_other_mal$tissue_ontology_term_id)
+#########
+
+merged_tissue_cluster_update_filt_other_mal$tissue_type <- "tissue"
+
+
+merged_tissue_cluster_update_filt_other_mal$donor_id 
+
+#########
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "ccRCC",
+                                                                              "MONDO:0007763", "not")
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Melanoma_derived_brain_metastases",
+                                                                              "MONDO:0005191",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Melanoma",
+                                                                              "MONDO:0005105",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "HCC",
+                                                                              "MONDO:0007256",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "iCCA",
+                                                                              "MONDO:0003210",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "Basal_Cell_Carcinoma",
+                                                                              "MONDO:0002939",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "ER+",
+                                                                              "MONDO:0006512",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "TNBC",
+                                                                              "MONDO:0005494",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Cancer_type == "HER2+",
+                                                                              "MONDO:0006244",
+                                                                              merged_tissue_cluster_update_filt_other_mal$disease_ontology_term_id)
+#########
+#########
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "B_cell",
+                                                                              "CL:0000236", "not")
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CAFs",
+                                                                              "CL:0000057",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD4_Tcells",
+                                                                              "CL:0000624",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8_Tcells",
+                                                                              "CL:0000625",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8act_Tcells",
+                                                                              "CL:0001049",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8eff_Tcell",
+                                                                              "CL:0001050",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8ex_Tcells",
+                                                                              "CL:0000920",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8mem_Tcells",
+                                                                              "CL:0000907",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "CD8naive_Tcell",
+                                                                              "CL:0000900",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "DCs",
+                                                                              "CL:0000451",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Endothelial",
+                                                                              "CL:0000115",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Fibroblast",
+                                                                              "CL:0000057",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "HPC_like",
+                                                                              "CL:0000837",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Lymphoid",
+                                                                              "CL:0000542",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Macrophage",
+                                                                              "CL:0000235",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Malignant",
+                                                                              "CL:0001064",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Mast_cell",
+                                                                              "CL:0000097",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Melanocytes",
+                                                                              "CL:0000148",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Microglia",
+                                                                              "CL:0000129",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Monocyte",
+                                                                              "CL:0000576",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Myeloid_cell",
+                                                                              "CL:0000763",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Myofibroblasts",
+                                                                              "CL:0000186",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Naive_Tcell",
+                                                                              "CL:0000898",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "NK_Tcell",
+                                                                              "CL:0000814",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "pDCs",
+                                                                              "CL:0001058",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Plasma_cells",
+                                                                              "CL:0000786",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Prolif_Tcell",
+                                                                              "CL:0000084",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "T_cell",
+                                                                              "CL:0000084",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "TAM",
+                                                                              "CL:0000235",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "TEC",
+                                                                              "CL:0002293",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Tfh",
+                                                                              "CL:0002038",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Th17",
+                                                                              "CL:0000899",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Treg",
+                                                                              "CL:0000815",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$cell_types_update == "Unclassified",
+                                                                              "unknown",
+                                                                              merged_tissue_cluster_update_filt_other_mal$cell_type_ontology_term_id)
+
+
+#############
+
+treatment_info <- read.csv("/mctp/share/users/gondal/01_scHLA/02_processing/ICB_Combined/v2 ICB datasets - Treatment_information.csv", 
+         header = TRUE,
+         sep = ",")
+
+treatment_info$Sample <- gsub("-", "", treatment_info$Sample)
+
+treatment_info$Sample <- ifelse(treatment_info$Sample == "Mel129PA", "Mel129pa", treatment_info$Sample)
+treatment_info$Sample <- ifelse(treatment_info$Sample == "Mel75.1", "Mel75", treatment_info$Sample)
+
+treatment_info$PMID_donor_id <- paste0(treatment_info$PMID, "ggg",
+                                       treatment_info$Sample)
+
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Alvarez_Breckenridge",
+                                                           "35706413", "not")
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Bassez",
+                                                           "33958794", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Bi",
+                                                           "33711272", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Jerby_Arnon",
+                                                           "30388455", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Ma",
+                                                           "31588021", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Pozniak",
+                                                           "38181739", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Tirosh",
+                                                           "27124452", merged_tissue_cluster_update_filt_other_mal$PMID)
+merged_tissue_cluster_update_filt_other_mal$PMID <- ifelse(merged_tissue_cluster_update_filt_other_mal$Study_name == "Yost",
+                                                           "31359002", merged_tissue_cluster_update_filt_other_mal$PMID)
+
+merged_tissue_cluster_update_filt_other_mal$PMID_donor_id <- paste0(merged_tissue_cluster_update_filt_other_mal$PMID, "ggg",
+                                                                    merged_tissue_cluster_update_filt_other_mal$donor_id)
+
+merged_tissue_cluster_update_filt_other_mal$cell_names <- rownames(merged_tissue_cluster_update_filt_other_mal@meta.data)
+merged_tissue_cluster_update_filt_other_mal_cell_names <- rownames(merged_tissue_cluster_update_filt_other_mal@meta.data)
+
+# Extract Seurat metadata
+seurat_metadata <- merged_tissue_cluster_update_filt_other_mal@meta.data
+
+# # Ensure cell names are rownames
+# rownames(seurat_metadata) <- seurat_metadata$cell_names
+
+# # Remove the cell_names column (if it exists)
+# seurat_metadata$cell_names <- NULL
+
+# # Ensure 'PMID_donor_id' is a row name in clinical data
+# rownames(treatment_info) <- treatment_info$PMID_donor_id
+
+# Merge the metadata with clinical data
+merged_data <- merge(seurat_metadata, treatment_info, by = "PMID_donor_id")
+
+# Set the row names of the merged data
+rownames(merged_data) <- merged_data$cell_names
+
+# # Drop the redundant 'Row.names' column
+# merged_data$Row.names <- NULL
+
+columns_to_keep <- c("cell_names")
+
+merged_tissue_cluster_update_filt_other_mal@meta.data <- merged_tissue_cluster_update_filt_other_mal@meta.data %>% dplyr::select(all_of(columns_to_keep))
+
+merged_tissue_cluster_update_filt_other_mal <- AddMetaData(merged_tissue_cluster_update_filt_other_mal,
+                                                           merged_data)
+
+
+#############
+
+
+merged_tissue_cluster_update_filt_other_mal$suspension_type <- "cell"
+
+
+#########
+merged_tissue_cluster_update_filt_other_mal$sex_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Sex == "M",
+                                                                              "PATO:0000384", "not")
+merged_tissue_cluster_update_filt_other_mal$sex_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Sex == "F",
+                                                                              "PATO:0000383",
+                                                                           merged_tissue_cluster_update_filt_other_mal$sex_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$sex_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$Sex == "Unknown",
+                                                                              "unknown",
+                                                                           merged_tissue_cluster_update_filt_other_mal$sex_ontology_term_id)
+
+
+##########
+merged_tissue_cluster_update_filt_other_mal@meta.data <- dplyr::rename(merged_tissue_cluster_update_filt_other_mal@meta.data , c(PMID = PMID.x) )
+merged_tissue_cluster_update_filt_other_mal$PMID.y <- NULL
+
+
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "35706413", # smartseq
+                                                           "EFO:0008931", "not")
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "33958794", ## 5' not sure - 10x 5' transcription profiling
+                                                           "EFO:0030004", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "33711272", # 10x 3' v2
+                                                           "EFO:0009899", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "30388455", # smartseq
+                                                           "EFO:0008931", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id) 
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "31588021", # 10x 3' v2
+                                                           "EFO:0009899", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "27124452", # smartseq
+                                                           "EFO:0008931", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse(merged_tissue_cluster_update_filt_other_mal$PMID == "31359002", ## 5' not sure - 10x 5' transcription profiling
+                                                           "EFO:0030004", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse((merged_tissue_cluster_update_filt_other_mal$PMID == "38181739" ), 
+                                                           "EFO:0009922", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+
+v5 <- c("sc5rCMA061", "sc5rCMA066", "sc5rCMA070", "sc5rCMA074", "sc5rCMA136", "sc5rCMA141", "sc5rCMA144", "sc5rCMA149", "sc5rCMA152", "sc5rCMA155", 
+        "sc5rCMA188", "sc5rCMA192", "sc5rCMA196")
+merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id <- ifelse((merged_tissue_cluster_update_filt_other_mal$PMID == "38181739" &  ## 5' not sure - 10x 5' transcription profiling
+                                                                               merged_tissue_cluster_update_filt_other_mal$donor_id %in% v5), 
+                                                           "EFO:0030004", merged_tissue_cluster_update_filt_other_mal$assay_ontology_term_id)
+####################
+
+
+
+
+age_info <- read.csv("/mctp/share/users/gondal/01_scHLA/02_processing/ICB_Combined/v3 ICB datasets - age.eth.csv", 
+         header = TRUE,
+         sep = ",")
+
+age_info$Sample <- gsub("-", "", age_info$Sample)
+
+age_info$Sample <- ifelse(age_info$Sample == "Mel129PA", "Mel129pa", age_info$Sample)
+age_info$Sample <- ifelse(age_info$Sample == "Mel75.1", "Mel75", age_info$Sample)
+
+age_info$PMID_donor_id <- paste0(age_info$PMID, "ggg",
+                                       age_info$Sample)
+
+merged_tissue_cluster_update_filt_other_mal$cell_names <- rownames(merged_tissue_cluster_update_filt_other_mal@meta.data)
+merged_tissue_cluster_update_filt_other_mal_cell_names <- rownames(merged_tissue_cluster_update_filt_other_mal@meta.data)
+
+# Extract Seurat metadata
+seurat_metadata <- merged_tissue_cluster_update_filt_other_mal@meta.data
+
+# # Ensure cell names are rownames
+# rownames(seurat_metadata) <- seurat_metadata$cell_names
+
+# # Remove the cell_names column (if it exists)
+# seurat_metadata$cell_names <- NULL
+
+# # Ensure 'PMID_donor_id' is a row name in clinical data
+# rownames(age_info) <- age_info$PMID_donor_id
+
+# Merge the metadata with clinical data
+merged_data <- merge(seurat_metadata, age_info, by = "PMID_donor_id")
+
+# Set the row names of the merged data
+rownames(merged_data) <- merged_data$cell_names
+
+# # Drop the redundant 'Row.names' column
+# merged_data$Row.names <- NULL
+
+columns_to_keep <- c("cell_names")
+
+merged_tissue_cluster_update_filt_other_mal@meta.data <- merged_tissue_cluster_update_filt_other_mal@meta.data %>% dplyr::select(all_of(columns_to_keep))
+
+merged_tissue_cluster_update_filt_other_mal <- AddMetaData(merged_tissue_cluster_update_filt_other_mal,
+                                                           merged_data)
+
+
+##########
+merged_tissue_cluster_update_filt_other_mal@meta.data <- dplyr::rename(merged_tissue_cluster_update_filt_other_mal@meta.data , c(PMID = PMID.x) )
+merged_tissue_cluster_update_filt_other_mal$PMID.y <- NULL
+
+merged_tissue_cluster_update_filt_other_mal@meta.data <- dplyr::rename(merged_tissue_cluster_update_filt_other_mal@meta.data , c(Sample = Sample.x) )
+merged_tissue_cluster_update_filt_other_mal$Sample.y <- NULL
+
+# merged_tissue_cluster_update_filt_other_mal@meta.data <- dplyr::rename(merged_tissue_cluster_update_filt_other_mal@meta.data , c(self_reported_ethnicity_ontology_term_id = self_reported_ethnicity_ontology_term_id.x) )
+# merged_tissue_cluster_update_filt_other_mal$self_reported_ethnicity_ontology_term_id.y <- NULL
+# 
+# merged_tissue_cluster_update_filt_other_mal@meta.data <- dplyr::rename(merged_tissue_cluster_update_filt_other_mal@meta.data , c(development_stage_ontology_term_id = development_stage_ontology_term_id.x) )
+# merged_tissue_cluster_update_filt_other_mal$development_stage_ontology_term_id.y <- NULL
+# 
+# ############# gene id to ensemble
+
+
+ensembl <- useMart("ensembl")
+dataset <- useDataset("hsapiens_gene_ensembl", mart = ensembl)
+
+gene_ids <- data.frame(gene_id = rownames(merged_tissue_cluster_update_filt_other_mal))
+
+# Get Ensembl IDs
+ensembl_mapping <- getBM(attributes = c('ensembl_gene_id', 'external_gene_name'), 
+                         filters = 'external_gene_name', 
+                         values = gene_ids$gene_id, 
+                         mart = dataset)
+
+# Remove duplicates and NAs
+ensembl_mapping <- ensembl_mapping %>% 
+                   distinct() %>% 
+                   filter(!is.na(ensembl_gene_id))
+
+
+# Keep only genes with valid mappings
+valid_genes <- unique(ensembl_mapping$external_gene_name)
+merged_tissue_cluster_update_filt_other_mal_update <- subset(merged_tissue_cluster_update_filt_other_mal, features = valid_genes)
+
+# Create a mapping from gene IDs to Ensembl IDs
+id_mapping <- setNames(ensembl_mapping$ensembl_gene_id, ensembl_mapping$external_gene_name)
+
+# Update raw counts
+raw_counts <- GetAssayData(merged_tissue_cluster_update_filt_other_mal_update, assay = "RNA", layer = "counts")
+raw_counts_ensembl <- raw_counts[rownames(raw_counts) %in% names(id_mapping), ]
+rownames(raw_counts_ensembl) <- id_mapping[rownames(raw_counts_ensembl)]
+raw_counts_ensembl <- raw_counts_ensembl[!duplicated(rownames(raw_counts_ensembl)), ]
+
+# Update normalized data
+norm_counts <- GetAssayData(merged_tissue_cluster_update_filt_other_mal_update, assay = "RNA", layer = "data")
+norm_counts_ensembl <- norm_counts[rownames(norm_counts) %in% names(id_mapping), ]
+rownames(norm_counts_ensembl) <- id_mapping[rownames(norm_counts_ensembl)]
+norm_counts_ensembl <- norm_counts_ensembl[!duplicated(rownames(norm_counts_ensembl)), ]
+
+# Keep only valid genes that have been mapped
+valid_genes <- intersect(rownames(raw_counts_ensembl), rownames(norm_counts_ensembl))
+
+# Create a new Seurat object with the filtered and updated counts
+new_seurat_object <- CreateSeuratObject(counts = raw_counts_ensembl[valid_genes, ], 
+                                         assay = "RNA", 
+                                         project = "scICB")
+
+# Set normalized data using SetAssayData
+new_seurat_object <- SetAssayData(new_seurat_object, layer = "data", 
+                                   new.data = norm_counts_ensembl[valid_genes, ])
+
+# Add metadata from the original object
+new_seurat_object <- AddMetaData(new_seurat_object, metadata = merged_tissue_cluster_update_filt_other_mal_update@meta.data)
+
+# Match specific metadata if necessary
+new_seurat_object@meta.data <- merged_tissue_cluster_update_filt_other_mal_update@meta.data[match(Cells(new_seurat_object), Cells(merged_tissue_cluster_update_filt_other_mal_update)), ]
+
+
+
+##############################
+
+saveRDS(new_seurat_object, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_08_10_28_24/new_seurat_object.RDS")
+new_seurat_object_update_2 <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_08_10_28_24/new_seurat_object.RDS")
+
+umap_df <- read.csv("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_07_10_08_24/umap_coordinates.csv", 
+         header = TRUE,
+         sep = ",")
+
+rownames(umap_df) <- umap_df$cell_id
+
+# Drop the 'cell_id' column if present in umap_df, keeping only UMAP_1 and UMAP_2
+umap_df <- umap_df[, c("UMAP_1", "UMAP_2")]
+
+# Add the UMAP embedding from umap_df to the Seurat object
+new_seurat_object_update_2[["umap"]] <- CreateDimReducObject(
+  embeddings = as.matrix(umap_df),  # Convert the dataframe to a matrix
+  key = "UMAP_"  # Set a key for the UMAP coordinates
+)
+
+# Verify that the UMAP embedding has been added
+Embeddings(new_seurat_object_update_2, "umap")
+
+cells_to_remove <- c("CY88CD45_150813_B05_S305_comb_3", "CY88CD45_150813_B05_S305_comb_7")
+new_seurat_object_update_2 <- subset(new_seurat_object_update_2, cells = setdiff(Cells(new_seurat_object_update_2), cells_to_remove))
+
+
+DimPlot(new_seurat_object_update_2, group.by = "Cancer_type")
+
+
+
+  
+  new_seurat_object_update_2 <- NormalizeData(new_seurat_object_update_2)
+  
+  new_seurat_object_update_2 <- FindVariableFeatures(new_seurat_object_update_2)
+  
+
+DimPlot(new_seurat_object_update_2, group.by = "Cancer_type")
+
+new_seurat_object_update_2[["RNA"]] <- as(object = new_seurat_object_update_2[["RNA"]], Class = "Assay")
+
+
+
+SaveH5Seurat(new_seurat_object_update_2, filename = "new_seurat_object_update_2.h5Seurat", overwrite = T, verbose = T)
+Convert("new_seurat_object_update_2.h5Seurat", dest = "h5ad", overwrite = TRUE)
+
+# VlnPlot(new_seurat_object, features = "ENSG00000143924", group.by = "Sex")
+# VlnPlot(merged_tissue_cluster_update_filt_other_mal_update, features = "B2M", group.by = "Sex")
+# VlnPlot(merged_tissue_cluster_update_filt_other_mal, features = "EML4", group.by = "Sex")
+
+
+```
+
+
+
+
+## seurat to h5ad
+```{r}
+
+merged_tissue_cluster_update_filt_other_mal_malignant <- subset(merged_tissue_cluster_update_filt_other_mal, subset = cell_types_update == "Malignant")
+
+SaveH5Seurat(merged_tissue_cluster_update_filt_other_mal_malignant, filename = "merged_tissue_cluster_update_filt_other_mal_malignant.h5Seurat")
+Convert("merged_tissue_cluster_update_filt_other_mal_malignant.h5Seurat", dest = "h5ad")
+
+# Extract data
+expression_matrix <- GetAssayData(merged_tissue_cluster_update_filt_other_mal_malignant, assay = "RNA", slot = "counts")
+metadata <- merged_tissue_cluster_update_filt_other_mal_malignant@meta.data
+
+# Save data to files
+write.csv(as.matrix(expression_matrix), file = "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_06_08_21_24/expression_matrix_mal.csv")
+write.csv(metadata, file = "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_06_08_21_24/metadata_mal.csv")
+
+####
+
+merged_tissue_cluster_update_filt_other_mal_notmalignant <- subset(merged_tissue_cluster_update_filt_other_mal, subset = cell_types_update != "Malignant")
+
+SaveH5Seurat(merged_tissue_cluster_update_filt_other_mal_notmalignant, filename = "merged_tissue_cluster_update_filt_other_mal_notmalignant.h5Seurat")
+Convert("merged_tissue_cluster_update_filt_other_mal_notmalignant.h5Seurat", dest = "h5ad")
+
+# Extract data
+expression_matrix <- GetAssayData(merged_tissue_cluster_update_filt_other_mal_notmalignant, assay = "RNA", slot = "counts")
+metadata <- merged_tissue_cluster_update_filt_other_mal_notmalignant@meta.data
+
+# Save data to files
+write.csv(as.matrix(expression_matrix), file = "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_06_08_21_24/expression_matrix_not_mal.csv")
+write.csv(metadata, file = "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_06_08_21_24/metadata_not_mal.csv")
+```
+
+```{r}
+umap_df <- read.csv("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_07_10_08_24/umap_coordinates.csv", 
+         header = TRUE,
+         sep = ",")
+
+rownames(umap_df) <- umap_df$cell_id
+
+# Drop the 'cell_id' column if present in umap_df, keeping only UMAP_1 and UMAP_2
+umap_df <- umap_df[, c("UMAP_1", "UMAP_2")]
+
+# Add the UMAP embedding from umap_df to the Seurat object
+merged_tissue_cluster_update_filt_other_mal[["umap"]] <- CreateDimReducObject(
+  embeddings = as.matrix(umap_df),  # Convert the dataframe to a matrix
+  key = "UMAP_"  # Set a key for the UMAP coordinates
+)
+
+# Verify that the UMAP embedding has been added
+Embeddings(merged_tissue_cluster_update_filt_other_mal, "umap")
+
+
+DimPlot(merged_tissue_cluster_update_filt_other_mal, group.by = "Cancer_type")
+```
+
+
+## ShinyCell data
+```{r}
+
+umap_df <- read.csv("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined_revised/version_07_10_08_24/umap_coordinates.csv", 
+         header = TRUE,
+         sep = ",")
+
+rownames(umap_df) <- umap_df$cell_id
+
+# Drop the 'cell_id' column if present in umap_df, keeping only UMAP_1 and UMAP_2
+umap_df <- umap_df[, c("UMAP_1", "UMAP_2")]
+
+# Add the UMAP embedding from umap_df to the Seurat object
+merged_tissue_cluster_update_filt_other_mal[["umap"]] <- CreateDimReducObject(
+  embeddings = as.matrix(umap_df),  # Convert the dataframe to a matrix
+  key = "UMAP_"  # Set a key for the UMAP coordinates
+)
+
+# Verify that the UMAP embedding has been added
+Embeddings(merged_tissue_cluster_update_filt_other_mal, "umap")
+
+cells_to_remove <- c("CY88CD45_150813_B05_S305_comb_3", "CY88CD45_150813_B05_S305_comb_7")
+merged_tissue_cluster_update_filt_other_mal <- subset(merged_tissue_cluster_update_filt_other_mal, cells = setdiff(Cells(merged_tissue_cluster_update_filt_other_mal), cells_to_remove))
+
+
+DimPlot(merged_tissue_cluster_update_filt_other_mal, group.by = "Cancer_type")
+
+
+
+  
+  merged_tissue_cluster_update_filt_other_mal <- NormalizeData(merged_tissue_cluster_update_filt_other_mal)
+  
+  merged_tissue_cluster_update_filt_other_mal <- FindVariableFeatures(merged_tissue_cluster_update_filt_other_mal)
+  
+  
+merged_tissue_cluster_update_filt_other_mal_shinycell <- merged_tissue_cluster_update_filt_other_mal
+
+
+# # Simulate variable gene identification
+# merged_filtered_tissue_cluster_sig_malignant_shinycell <- FindVariableFeatures(merged_filtered_tissue_cluster_sig_malignant_shinycell, selection.method = "vst", nfeatures = 20000)
+# 
+# # Print the variable genes
+# variable_genes <- VariableFeatures(merged_filtered_tissue_cluster_sig_malignant_shinycell)
+# print(variable_genes)
+# 
+# # Subset the Seurat object to keep only the variable genes
+# seurat_obj_variable <- subset(merged_filtered_tissue_cluster_sig_malignant_shinycell, features = variable_genes)
+
+
+# Use the 'layers' argument instead of 'counts', 'data', and 'scale.data'
+merged_tissue_cluster_update_filt_other_mal_shinycell <- DietSeurat(
+  merged_tissue_cluster_update_filt_other_mal_shinycell,
+  layers = c("data"),    # Specify which layers to keep (e.g., 'counts', 'data', etc.)
+  features = NULL,
+  assays = NULL,
+  dimreducs = "umap",    # Retain UMAP embeddings
+  graphs = NULL,
+  misc = TRUE            # Keep miscellaneous data
+)
+
+
+# Define the columns you want to keep
+columns_to_keep <- c("cell_types_update", "pre_post", "donor_id", "Study_name", "Combined_outcome", "Cancer_type_update")
+
+# Filter the metadata to keep only the selected columns
+filtered_metadata <- merged_tissue_cluster_update_filt_other_mal_shinycell@meta.data[, columns_to_keep, drop = FALSE]
+
+# Replace the original metadata with the filtered metadata
+merged_tissue_cluster_update_filt_other_mal_shinycell@meta.data <- filtered_metadata
+
+merged_tissue_cluster_update_filt_other_mal_shinycell <- SetIdent(merged_tissue_cluster_update_filt_other_mal_shinycell, value = merged_tissue_cluster_update_filt_other_mal_shinycell@meta.data$Cancer_type_update  )
+
+
+seu = merged_tissue_cluster_update_filt_other_mal_shinycell
+scConf = createConfig(seu)
+makeShinyApp(seu, scConf, gene.mapping = FALSE,
+             shiny.title = "scICB datasets",
+             shiny.dir = "/mctp/share/users/gondal/01_scHLA/03_output/Tabula_Sapiens/06_ShinyCell_all/",
+             default.gene1 = "B2M",
+             default.gene2 = "CD74") 
+
+rsconnect::deployApp('/mctp/share/users/gondal/01_scHLA/03_output/Tabula_Sapiens/06_ShinyCell_all/')
+```
+
+
+
+## ShinyCell data
+```{r}
+merged_filtered_tissue_cluster_sig_malignant_shinycell <- merged_filtered_tissue_cluster_sig_malignant
+
+
+# # Simulate variable gene identification
+# merged_filtered_tissue_cluster_sig_malignant_shinycell <- FindVariableFeatures(merged_filtered_tissue_cluster_sig_malignant_shinycell, selection.method = "vst", nfeatures = 20000)
+# 
+# # Print the variable genes
+# variable_genes <- VariableFeatures(merged_filtered_tissue_cluster_sig_malignant_shinycell)
+# print(variable_genes)
+# 
+# # Subset the Seurat object to keep only the variable genes
+# seurat_obj_variable <- subset(merged_filtered_tissue_cluster_sig_malignant_shinycell, features = variable_genes)
+
+
+merged_filtered_tissue_cluster_sig_malignant_shinycell <- DietSeurat(
+  merged_filtered_tissue_cluster_sig_malignant_shinycell,
+  counts = FALSE,
+  data = TRUE,
+  scale.data = FALSE,
+  features = NULL,
+  assays = NULL,
+  dimreducs = "umap",
+  graphs = NULL,
+  misc = TRUE
+)
+
+# Define the columns you want to keep
+columns_to_keep <- c("cell_types_update", "pre_post", "donor_id", "Study_name", "Combined_outcome", "Cancer_type_update")
+
+# Filter the metadata to keep only the selected columns
+filtered_metadata <- merged_filtered_tissue_cluster_sig_malignant_shinycell@meta.data[, columns_to_keep, drop = FALSE]
+
+# Replace the original metadata with the filtered metadata
+merged_filtered_tissue_cluster_sig_malignant_shinycell@meta.data <- filtered_metadata
+
+merged_filtered_tissue_cluster_sig_malignant_shinycell <- SetIdent(merged_filtered_tissue_cluster_sig_malignant_shinycell, value = merged_filtered_tissue_cluster_sig_malignant_shinycell@meta.data$Cancer_type_update  )
+
+
+seu = merged_filtered_tissue_cluster_sig_malignant_shinycell
+scConf = createConfig(seu)
+makeShinyApp(seu, scConf, gene.mapping = FALSE,
+             shiny.title = "scICB datasets",
+             shiny.dir = "/mctp/share/users/gondal/01_scHLA/03_output/Tabula_Sapiens/02_ShinyCell/shinyApp/",
+             default.gene1 = "B2M",
+             default.gene2 = "CD74") 
+```
+
+
+
+## Rshiny data
+```{r}
+
+saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+
+merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+
+merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_tissue_cluster_sig$Combined_outcome == "E"  , "Favourable", merged_filtered_tissue_cluster_sig$Combined_outcome)
+
+merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_tissue_cluster_sig$Combined_outcome == "NE"  , "Unfavourable", merged_filtered_tissue_cluster_sig$Combined_outcome)
+
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$donor_id_pre_post  )
+
+
+saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/merged_filtered_tissue_cluster_sig.RDS")
+
+down.sample <- subset(merged_filtered_tissue_cluster_sig,  downsample = 200)
+
+##################################
+
+Bassez_TNBC_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:TNBC")
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_TNBC_data, slot = "data"))))
+Bassez_TNBC_data <- merge(Bassez_TNBC_data_md, 
+                                   Bassez_TNBC_data, by = "row.names")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:HER2+")
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_HER2_data, slot = "data"))))
+Bassez_HER2_data <- merge(Bassez_HER2_data_md, 
+                                   Bassez_HER2_data, by = "row.names")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:ER+")
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_ER_data, slot = "data"))))
+Bassez_ER_data <- merge(Bassez_ER_data_md, 
+                                   Bassez_ER_data, by = "row.names")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(down.sample , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+Alvarez_Breckenridge_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data <- as.data.frame(t(as.data.frame(GetAssayData(Alvarez_Breckenridge_data, slot = "data"))))
+Alvarez_Breckenridge_data <- merge(Alvarez_Breckenridge_md, 
+                                   Alvarez_Breckenridge_data, by = "row.names")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(down.sample , subset = Study_name_cancer == "Bi:ccRCC")
+Bi_ccRCC_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bi_ccRCC_data, slot = "data"))))
+Bi_ccRCC_data <- merge(Bi_ccRCC_md, 
+                                   Bi_ccRCC_data, by = "row.names")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+Jerby_Arnon_Mel_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Jerby_Arnon_Mel_data, slot = "data"))))
+Jerby_Arnon_Mel_data <- merge(Jerby_Arnon_Mel_md, 
+                                   Jerby_Arnon_Mel_data, by = "row.names")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(down.sample , subset = Study_name_cancer == "Ma:HCC")
+Ma_HCC_md <- Ma_HCC_data@meta.data
+Ma_HCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Ma_HCC_data, slot = "data"))))
+Ma_HCC_data <- merge(Ma_HCC_md, 
+                                   Ma_HCC_data, by = "row.names")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(down.sample , subset = Study_name_cancer == "Ma:iCCA")
+M_iCCA_md <- M_iCCA_data@meta.data
+M_iCCA_data <- as.data.frame(t(as.data.frame(GetAssayData(M_iCCA_data, slot = "data"))))
+M_iCCA_data <- merge(M_iCCA_md, 
+                                   M_iCCA_data, by = "row.names")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Pozniak:Mel")
+Pozniak_Mel_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Pozniak_Mel_data, slot = "data"))))
+Pozniak_Mel_data <- merge(Pozniak_Mel_md, 
+                                   Pozniak_Mel_data, by = "row.names")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Tirosh:Mel")
+Tirosh_Mel_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Tirosh_Mel_data, slot = "data"))))
+Tirosh_Mel_data <- merge(Tirosh_Mel_md, 
+                                   Tirosh_Mel_data, by = "row.names")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(down.sample , subset = Study_name_cancer == "Yost:BCC")
+Yost_BCC_md <- Yost_BCC_data@meta.data
+Yost_BCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Yost_BCC_data, slot = "data"))))
+Yost_BCC_data <- merge(Yost_BCC_md, 
+                                   Yost_BCC_data, by = "row.names")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_singlecell/Yost_BCC_data.csv")
+
+
+```
+
+## R shiny - pseudobulk
+```{r}
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$donor_id_pre_post  )
+
+
+##################################
+
+Bassez_TNBC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:TNBC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_TNBC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data_md <- Bassez_TNBC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_TNBC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_TNBC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:HER2+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_HER2_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data_md <- Bassez_HER2_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_HER2_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_HER2_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:ER+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_ER_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data_md <- Bassez_ER_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_ER_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_ER_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Alvarez_Breckenridge_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Alvarez_Breckenridge_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Alvarez_Breckenridge_data_md, by = "donor_id_pre_post")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bi:ccRCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bi_ccRCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bi_ccRCC_data_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data_md <- Bi_ccRCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bi_ccRCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bi_ccRCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Jerby_Arnon_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Jerby_Arnon_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Jerby_Arnon_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:HCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Ma_HCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Ma_HCC_data_md <- Ma_HCC_data@meta.data
+Ma_HCC_data_md <- Ma_HCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Ma_HCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Ma_HCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:iCCA")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = M_iCCA_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+M_iCCA_data_md <- M_iCCA_data@meta.data
+M_iCCA_data_md <- M_iCCA_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+M_iCCA_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   M_iCCA_data_md, by = "donor_id_pre_post")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Pozniak:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Pozniak_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Pozniak_Mel_data_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data_md <- Pozniak_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Pozniak_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Pozniak_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Tirosh:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Tirosh_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Tirosh_Mel_data_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data_md <- Tirosh_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Tirosh_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Tirosh_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Yost:BCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Yost_BCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Yost_BCC_data_md <- Yost_BCC_data@meta.data
+Yost_BCC_data_md <- Yost_BCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Yost_BCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Yost_BCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk/Yost_BCC_data.csv")
+
+# Yost_BCC <- data.table::fread("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Yost_BCC_data.csv")
+```
+
+## Housekeeping
+```{r}
+hscSEG <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Tabula_Sapiens/h-scSEG.csv", 
+         header = TRUE,
+         sep = ",")
+hscSEG <- hscSEG$x
+```
+
+## R shiny - pseudobulk -0 HSseg
+```{r}
+merged_filtered_tissue_cluster_sig <- SetIdent(merged_filtered_tissue_cluster_sig, value = merged_filtered_tissue_cluster_sig@meta.data$donor_id_pre_post  )
+
+
+##################################
+
+Bassez_TNBC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:TNBC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_TNBC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data_md <- Bassez_TNBC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_TNBC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_TNBC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:HER2+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_HER2_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data_md <- Bassez_HER2_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_HER2_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_HER2_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bassez:ER+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_ER_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data_md <- Bassez_ER_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_ER_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_ER_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Alvarez_Breckenridge_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Alvarez_Breckenridge_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Alvarez_Breckenridge_data_md, by = "donor_id_pre_post")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Bi:ccRCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bi_ccRCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Bi_ccRCC_data_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data_md <- Bi_ccRCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bi_ccRCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bi_ccRCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Jerby_Arnon_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Jerby_Arnon_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Jerby_Arnon_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:HCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Ma_HCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Ma_HCC_data_md <- Ma_HCC_data@meta.data
+Ma_HCC_data_md <- Ma_HCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Ma_HCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Ma_HCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Ma:iCCA")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = M_iCCA_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+M_iCCA_data_md <- M_iCCA_data@meta.data
+M_iCCA_data_md <- M_iCCA_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+M_iCCA_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   M_iCCA_data_md, by = "donor_id_pre_post")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Pozniak:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Pozniak_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Pozniak_Mel_data_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data_md <- Pozniak_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Pozniak_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Pozniak_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Tirosh:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Tirosh_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+###
+Tirosh_Mel_data_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data_md <- Tirosh_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Tirosh_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Tirosh_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(merged_filtered_tissue_cluster_sig , subset = Study_name_cancer == "Yost:BCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Yost_BCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- (donor_id_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_pre_post)
+
+###
+Yost_BCC_data_md <- Yost_BCC_data@meta.data
+Yost_BCC_data_md <- Yost_BCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Yost_BCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Yost_BCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Yost_BCC_data.csv")
+
+# Yost_BCC <- data.table::fread("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_16_24_10_23_pseudobulk/Yost_BCC_data.csv")
+```
+
+
+```{r}
+data <- rbind(Bassez_TNBC_data, 
+              Bassez_HER2_data,
+              Bassez_ER_data,
+              Alvarez_Breckenridge_data,
+              Bi_ccRCC_data,
+              Jerby_Arnon_Mel_data,M_iCCA_data,
+              Pozniak_Mel_data,
+              Ma_HCC_data,
+              Tirosh_Mel_data,
+              Yost_BCC_data)
+
+write.csv(data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_18_18_12_23_pseudobulk_hscSEQ/Combined_data.csv")
+```
+
+
+## R shiny - pseudobulk -0 HSseg - cell types
+```{r}
+merged_tissue_cluster_update_filt_other_mal$Study_name_cancer <- paste0(merged_tissue_cluster_update_filt_other_mal$Study_name, ":", merged_tissue_cluster_update_filt_other_mal$Cancer_type_update)
+
+merged_tissue_cluster_update_filt_other_mal <- SetIdent(merged_tissue_cluster_update_filt_other_mal, value = merged_tissue_cluster_update_filt_other_mal@meta.data$donor_id_cell_types_pre_post  )
+
+
+##################################
+
+Bassez_TNBC_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Bassez:TNBC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_TNBC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data_md <- Bassez_TNBC_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Bassez_TNBC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_TNBC_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Bassez:HER2+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_HER2_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data_md <- Bassez_HER2_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Bassez_HER2_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_HER2_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Bassez:ER+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_ER_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data_md <- Bassez_ER_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Bassez_ER_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_ER_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Alvarez_Breckenridge_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Alvarez_Breckenridge_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Alvarez_Breckenridge_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Bi:ccRCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bi_ccRCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Bi_ccRCC_data_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data_md <- Bi_ccRCC_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Bi_ccRCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bi_ccRCC_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Jerby_Arnon_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Jerby_Arnon_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Jerby_Arnon_Mel_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Ma:HCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Ma_HCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Ma_HCC_data_md <- Ma_HCC_data@meta.data
+Ma_HCC_data_md <- Ma_HCC_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Ma_HCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Ma_HCC_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Ma:iCCA")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = M_iCCA_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+M_iCCA_data_md <- M_iCCA_data@meta.data
+M_iCCA_data_md <- M_iCCA_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+M_iCCA_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   M_iCCA_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Pozniak:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Pozniak_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Pozniak_Mel_data_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data_md <- Pozniak_Mel_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Pozniak_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Pozniak_Mel_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Tirosh:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Tirosh_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+###
+Tirosh_Mel_data_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data_md <- Tirosh_Mel_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Tirosh_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Tirosh_Mel_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(merged_tissue_cluster_update_filt_other_mal , subset = Study_name_cancer == "Yost:BCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Yost_BCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+###
+existing_columns <- intersect(names(Taubula_spaiens_RDS_log_AvExp_df1), hscSEG)
+if (length(existing_columns) > 0) {
+  print("The following column names exist in the dataframe:")
+  print(existing_columns)
+} else {
+  print("None of the specified column names exist in the dataframe.")
+}
+
+selected_data <- Taubula_spaiens_RDS_log_AvExp_df1[, existing_columns]
+Taubula_spaiens_RDS_log_AvExp_df1$hscSEG <- rowMeans(selected_data)
+
+donor_id_cell_types_pre_post <- data.frame(Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post)
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- NULL
+
+Taubula_spaiens_RDS_log_AvExp_df1 <- Taubula_spaiens_RDS_log_AvExp_df1 - Taubula_spaiens_RDS_log_AvExp_df1$hscSEG
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_cell_types_pre_post <- (donor_id_cell_types_pre_post$Taubula_spaiens_RDS_log_AvExp_df1.donor_id_cell_types_pre_post)
+
+###
+Yost_BCC_data_md <- Yost_BCC_data@meta.data
+Yost_BCC_data_md <- Yost_BCC_data_md %>%
+  distinct(donor_id_cell_types_pre_post, .keep_all = TRUE)
+
+Yost_BCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Yost_BCC_data_md, by = "donor_id_cell_types_pre_post")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Yost_BCC_data.csv")
+
+
+
+data <- rbind(Bassez_TNBC_data, 
+              Bassez_HER2_data,
+              Bassez_ER_data,
+              Alvarez_Breckenridge_data,
+              Bi_ccRCC_data,
+              Jerby_Arnon_Mel_data,M_iCCA_data,
+              Pozniak_Mel_data,
+              Ma_HCC_data,
+              Tirosh_Mel_data,
+              Yost_BCC_data)
+
+write.csv(data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_hscSEQNEW/Combined_data.csv")
+```
+
+## R shiny - pseudobulk  - cell types
+```{r}
+merged_tissue_cluster_update_filt_other_mal  <- SetIdent(merged_tissue_cluster_update_filt_other_mal , value = merged_tissue_cluster_update_filt_other_mal @meta.data$donor_id_cell_types_pre_post  )
+
+
+##################################
+
+Bassez_TNBC_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Bassez:TNBC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_TNBC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data_md <- Bassez_TNBC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_TNBC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_TNBC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Bassez:HER2+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_HER2_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data_md <- Bassez_HER2_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_HER2_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_HER2_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Bassez:ER+")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bassez_ER_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data_md <- Bassez_ER_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bassez_ER_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bassez_ER_data_md, by = "donor_id_pre_post")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Alvarez_Breckenridge_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data_md <- Alvarez_Breckenridge_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Alvarez_Breckenridge_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Alvarez_Breckenridge_data_md, by = "donor_id_pre_post")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Bi:ccRCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Bi_ccRCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Bi_ccRCC_data_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data_md <- Bi_ccRCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Bi_ccRCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Bi_ccRCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Jerby_Arnon_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data_md <- Jerby_Arnon_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Jerby_Arnon_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Jerby_Arnon_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Ma:HCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Ma_HCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Ma_HCC_data_md <- Ma_HCC_data@meta.data
+Ma_HCC_data_md <- Ma_HCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Ma_HCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Ma_HCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Ma:iCCA")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = M_iCCA_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+M_iCCA_data_md <- M_iCCA_data@meta.data
+M_iCCA_data_md <- M_iCCA_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+M_iCCA_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   M_iCCA_data_md, by = "donor_id_pre_post")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Pozniak:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Pozniak_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Pozniak_Mel_data_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data_md <- Pozniak_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Pozniak_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Pozniak_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Tirosh:Mel")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Tirosh_Mel_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Tirosh_Mel_data_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data_md <- Tirosh_Mel_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Tirosh_Mel_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Tirosh_Mel_data_md, by = "donor_id_pre_post")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(merged_tissue_cluster_update_filt_other_mal  , subset = Study_name_cancer == "Yost:BCC")
+
+Taubula_spaiens_RDS_log_AvExp1 <- AverageExpression(object = Yost_BCC_data)
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(log1p(as.matrix(data.frame(Taubula_spaiens_RDS_log_AvExp1[1]))))
+colnames(Taubula_spaiens_RDS_log_AvExp_df1) <- gsub("RNA.", "", colnames(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1 <- as.data.frame(t(Taubula_spaiens_RDS_log_AvExp_df1))
+Taubula_spaiens_RDS_log_AvExp_df1$donor_id_pre_post <- rownames(Taubula_spaiens_RDS_log_AvExp_df1)
+
+Yost_BCC_data_md <- Yost_BCC_data@meta.data
+Yost_BCC_data_md <- Yost_BCC_data_md %>%
+  distinct(donor_id_pre_post, .keep_all = TRUE)
+
+Yost_BCC_data <- left_join(Taubula_spaiens_RDS_log_AvExp_df1, 
+                                   Yost_BCC_data_md, by = "donor_id_pre_post")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_pseudobulk_NEW/Yost_BCC_data.csv")
+```
+
+
+## Rshiny data - single cell - cell types
+```{r}
+# 
+# saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+# 
+# merged_filtered_tissue_cluster_sig <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_11_25_08_23/merged_filtered_tissue_cluster_sig.RDS")
+# 
+# merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_tissue_cluster_sig$Combined_outcome == "E"  , "Favourable", merged_filtered_tissue_cluster_sig$Combined_outcome)
+# 
+# merged_filtered_tissue_cluster_sig$Combined_outcome <- ifelse(merged_filtered_tissue_cluster_sig$Combined_outcome == "NE"  , "Unfavourable", merged_filtered_tissue_cluster_sig$Combined_outcome)
+# 
+merged_tissue_cluster_update_filt_other_mal <- SetIdent(merged_tissue_cluster_update_filt_other_mal, value = merged_tissue_cluster_update_filt_other_mal@meta.data$donor_id_cell_types_pre_post  )
+# 
+# 
+# saveRDS(merged_filtered_tissue_cluster_sig, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_19_19_12_23/merged_filtered_tissue_cluster_sig.RDS")
+
+down.sample <- subset(merged_tissue_cluster_update_filt_other_mal ,  downsample = 100)
+
+##################################
+
+Bassez_TNBC_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:TNBC")
+Bassez_TNBC_data_md <- Bassez_TNBC_data@meta.data
+Bassez_TNBC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_TNBC_data, slot = "data"))))
+Bassez_TNBC_data <- merge(Bassez_TNBC_data_md, 
+                                   Bassez_TNBC_data, by = "row.names")
+
+write.csv(Bassez_TNBC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Bassez_TNBC_data.csv")
+
+
+Bassez_HER2_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:HER2+")
+Bassez_HER2_data_md <- Bassez_HER2_data@meta.data
+Bassez_HER2_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_HER2_data, slot = "data"))))
+Bassez_HER2_data <- merge(Bassez_HER2_data_md, 
+                                   Bassez_HER2_data, by = "row.names")
+
+write.csv(Bassez_HER2_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Bassez_HER2_data.csv")
+
+Bassez_ER_data <- subset(down.sample , subset = Study_name_cancer == "Bassez:ER+")
+Bassez_ER_data_md <- Bassez_ER_data@meta.data
+Bassez_ER_data <- as.data.frame(t(as.data.frame(GetAssayData(Bassez_ER_data, slot = "data"))))
+Bassez_ER_data <- merge(Bassez_ER_data_md, 
+                                   Bassez_ER_data, by = "row.names")
+
+write.csv(Bassez_ER_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Bassez_ER_data.csv")
+
+
+Alvarez_Breckenridge_data <- subset(down.sample , subset = Study_name_cancer == "Alvarez_Breckenridge:MBM")
+Alvarez_Breckenridge_md <- Alvarez_Breckenridge_data@meta.data
+Alvarez_Breckenridge_data <- as.data.frame(t(as.data.frame(GetAssayData(Alvarez_Breckenridge_data, slot = "data"))))
+Alvarez_Breckenridge_data <- merge(Alvarez_Breckenridge_md, 
+                                   Alvarez_Breckenridge_data, by = "row.names")
+
+write.csv(Alvarez_Breckenridge_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Alvarez_Breckenridge_data.csv")
+
+
+Bi_ccRCC_data <- subset(down.sample , subset = Study_name_cancer == "Bi:ccRCC")
+Bi_ccRCC_md <- Bi_ccRCC_data@meta.data
+Bi_ccRCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Bi_ccRCC_data, slot = "data"))))
+Bi_ccRCC_data <- merge(Bi_ccRCC_md, 
+                                   Bi_ccRCC_data, by = "row.names")
+
+write.csv(Bi_ccRCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Bi_ccRCC_data.csv")
+
+
+Jerby_Arnon_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Jerby_Arnon:Mel")
+Jerby_Arnon_Mel_md <- Jerby_Arnon_Mel_data@meta.data
+Jerby_Arnon_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Jerby_Arnon_Mel_data, slot = "data"))))
+Jerby_Arnon_Mel_data <- merge(Jerby_Arnon_Mel_md, 
+                                   Jerby_Arnon_Mel_data, by = "row.names")
+
+write.csv(Jerby_Arnon_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Jerby_Arnon_Mel_data.csv")
+
+
+Ma_HCC_data <- subset(down.sample , subset = Study_name_cancer == "Ma:HCC")
+Ma_HCC_md <- Ma_HCC_data@meta.data
+Ma_HCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Ma_HCC_data, slot = "data"))))
+Ma_HCC_data <- merge(Ma_HCC_md, 
+                                   Ma_HCC_data, by = "row.names")
+
+write.csv(Ma_HCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Ma_HCC_data.csv")
+
+
+M_iCCA_data <- subset(down.sample , subset = Study_name_cancer == "Ma:iCCA")
+M_iCCA_md <- M_iCCA_data@meta.data
+M_iCCA_data <- as.data.frame(t(as.data.frame(GetAssayData(M_iCCA_data, slot = "data"))))
+M_iCCA_data <- merge(M_iCCA_md, 
+                                   M_iCCA_data, by = "row.names")
+
+write.csv(M_iCCA_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/M_iCCA_data.csv")
+
+
+Pozniak_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Pozniak:Mel")
+Pozniak_Mel_md <- Pozniak_Mel_data@meta.data
+Pozniak_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Pozniak_Mel_data, slot = "data"))))
+Pozniak_Mel_data <- merge(Pozniak_Mel_md, 
+                                   Pozniak_Mel_data, by = "row.names")
+
+write.csv(Pozniak_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Pozniak_Mel_data.csv")
+
+
+Tirosh_Mel_data <- subset(down.sample , subset = Study_name_cancer == "Tirosh:Mel")
+Tirosh_Mel_md <- Tirosh_Mel_data@meta.data
+Tirosh_Mel_data <- as.data.frame(t(as.data.frame(GetAssayData(Tirosh_Mel_data, slot = "data"))))
+Tirosh_Mel_data <- merge(Tirosh_Mel_md, 
+                                   Tirosh_Mel_data, by = "row.names")
+
+write.csv(Tirosh_Mel_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Tirosh_Mel_data.csv")
+
+
+Yost_BCC_data <- subset(down.sample , subset = Study_name_cancer == "Yost:BCC")
+Yost_BCC_md <- Yost_BCC_data@meta.data
+Yost_BCC_data <- as.data.frame(t(as.data.frame(GetAssayData(Yost_BCC_data, slot = "data"))))
+Yost_BCC_data <- merge(Yost_BCC_md, 
+                                   Yost_BCC_data, by = "row.names")
+
+write.csv(Yost_BCC_data, "/mctp/share/users/gondal/01_scHLA/03_output/ICI_Combined/version_21_11_04_24_singlecell_NEW/Yost_BCC_data.csv")
+
+
+```
