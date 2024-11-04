@@ -1,0 +1,176 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Liver_md <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_samples.txt.gz", 
+         sep = "\t")
+row.names(Liver_md) <- Liver_md$Cell.Barcode
+
+Liver_anno <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/Book1.csv", 
+         sep = ",")
+
+Liver_md <- separate(Liver_md, Sample , into = c("sample", "patient", "id"), sep = c("_"))
+
+Liver_md$type = ifelse(Liver_md$id == "LCP18", "H18", NA)
+Liver_md$type = ifelse(Liver_md$id == "LCP21", "H21", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP23", "H23", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP25", "C25", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP26", "C26", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP28", "H28", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP29", "C29", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP30", "H30", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP35", "C35", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP37", "H37", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP38", "H38", Liver_md$type)
+Liver_md$type = ifelse(Liver_md$id == "LCP39", "C39", Liver_md$type)
+
+
+Liver_md_anno <- merge(Liver_md, Liver_anno, by.x = "type", by.y = "ID")
+row.names(Liver_md_anno) <- Liver_md_anno$Cell.Barcode
+
+cts <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_matrix.mtx.gz",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_genes.tsv.gz", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set1_barcodes.tsv.gz")
+  
+Liver_seurat_set_1 <- CreateSeuratObject(counts = cts)
+seurat_Liver_seurat_set_1 <- AddMetaData(Liver_seurat_set_1, Liver_md_anno)
+
+###################################
+
+Liver_md2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_samples.txt.gz", 
+         sep = "\t")
+row.names(Liver_md2) <- Liver_md2$Cell.Barcode
+
+Liver_anno2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/Book1.csv", 
+         sep = ",")
+
+Liver_md2 <- separate(Liver_md2, Sample , into = c("sample", "patient", "id"), sep = c("_"))
+
+Liver_md2$type = ifelse(Liver_md2$id == "LCP34", "H34", NA)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP42", "C42", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP46", "C46", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP56", "C56", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP60", "C60", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP65", "H65", Liver_md2$type)
+Liver_md2$type = ifelse(Liver_md2$id == "LCP66", "C66", Liver_md2$type)
+
+
+
+Liver_md_anno2 <- merge(Liver_md2, Liver_anno2, by.x = "type", by.y = "ID")
+row.names(Liver_md_anno2) <- Liver_md_anno2$Cell.Barcode
+
+cts2 <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_matrix.mtx.gz",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_genes.tsv.gz", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/GSE125449_Set2_barcodes.tsv.gz")
+  
+Liver_seurat_set_2 <- CreateSeuratObject(counts = cts2)
+seurat_Liver_seurat_set_2 <- AddMetaData(Liver_seurat_set_2, Liver_md_anno2)
+
+#################################
+
+
+
+seurat_Liver_seurat_set_1$set <- "Set_1" 
+seurat_Liver_seurat_set_2$set <- "Set_2" 
+
+seurat_Liver_seurat_set_1_2 <- merge(seurat_Liver_seurat_set_1, seurat_Liver_seurat_set_2)
+
+seurat_Liver_seurat_set_1_2_MD <- seurat_Liver_seurat_set_1_2@meta.data
+
+meta_anno <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/CHOL_GSE125449_aPD1aPDL1aCTLA4_CellMetainfo_table.tsv",
+         sep = "\t")
+meta_anno = meta_anno[!duplicated(meta_anno$Patient),]
+meta_anno <- meta_anno[,-c(1:8)]
+
+meta_anno2 <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Liver_Ma/LIHC_GSE125449_aPDL1aCTLA4_CellMetainfo_table.tsv",
+         sep = "\t")
+meta_anno2 = meta_anno2[!duplicated(meta_anno2$Patient),]
+meta_anno2 <- meta_anno2[,-c(1:8)]
+
+meta_anno_2 <- rbind(meta_anno, meta_anno2)
+
+seurat_Liver_seurat_set_1_2_MD <- merge(seurat_Liver_seurat_set_1_2_MD, meta_anno_2, by.x = "type", by.y = "Patient")
+rownames(seurat_Liver_seurat_set_1_2_MD) <- seurat_Liver_seurat_set_1_2_MD$Cell.Barcode
+seurat_Liver_seurat_set_1_2_MD <- seurat_Liver_seurat_set_1_2_MD[,c(21:25)]
+
+seurat_Liver_seurat_set_1_2 <- AddMetaData(seurat_Liver_seurat_set_1_2, seurat_Liver_seurat_set_1_2_MD)
+```
+
+## refining the seurat object
+```{r}
+## converting
+seurat_Liver_seurat_set_1_2@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2@meta.data , c(cell_types = Type) )
+
+seurat_Liver_seurat_set_1_2$pre_post <- ifelse(seurat_Liver_seurat_set_1_2$Treatment == "NO", "Pre", "Post")
+
+seurat_Liver_seurat_set_1_2@meta.data$Mode.of.Actione <- ifelse(is.na(seurat_Liver_seurat_set_1_2@meta.data$Mode.of.Actione) | seurat_Liver_seurat_set_1_2@meta.data$Mode.of.Actione == "", "Not_app", seurat_Liver_seurat_set_1_2@meta.data$Mode.of.Actione)
+
+seurat_Liver_seurat_set_1_2@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2@meta.data , c(outcome = Mode.of.Actione) )
+
+seurat_Liver_seurat_set_1_2@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2@meta.data , c(donor_id = type) )
+
+seurat_Liver_seurat_set_1_2@meta.data <- dplyr::rename(seurat_Liver_seurat_set_1_2@meta.data , c(cell_id = Cell.Barcode) )
+
+## pasting
+seurat_Liver_seurat_set_1_2$donor_id_pre_post <- paste0(seurat_Liver_seurat_set_1_2$donor_id, "_", seurat_Liver_seurat_set_1_2$pre_post)
+
+seurat_Liver_seurat_set_1_2$donor_id_outcome <- paste0(seurat_Liver_seurat_set_1_2$donor_id, "_", seurat_Liver_seurat_set_1_2$outcome)
+
+seurat_Liver_seurat_set_1_2$donor_id_cell_types <- paste0(seurat_Liver_seurat_set_1_2$donor_id, "_", seurat_Liver_seurat_set_1_2$cell_types)
+
+seurat_Liver_seurat_set_1_2$donor_id_cell_types_pre_post <- paste0(seurat_Liver_seurat_set_1_2$donor_id_cell_types, "_", seurat_Liver_seurat_set_1_2$pre_post)
+
+seurat_Liver_seurat_set_1_2$sample_id_pre_post_outcome <- paste0(seurat_Liver_seurat_set_1_2$donor_id_pre_post, "_", seurat_Liver_seurat_set_1_2$outcome )
+
+
+## removing samples with less than 20 cells
+seurat_Liver_seurat_set_1_2_epi_md <- seurat_Liver_seurat_set_1_2@meta.data
+seurat_Liver_seurat_set_1_2_epi_md_subset <- seurat_Liver_seurat_set_1_2_epi_md[seurat_Liver_seurat_set_1_2_epi_md$donor_id_cell_types_pre_post %in% names(which(table(seurat_Liver_seurat_set_1_2_epi_md$donor_id_cell_types_pre_post) > 20)), ]
+
+seurat_Liver_seurat_set_1_2$enough_cells <- ifelse(seurat_Liver_seurat_set_1_2$donor_id_cell_types_pre_post %in% seurat_Liver_seurat_set_1_2_epi_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+seurat_Liver_seurat_set_1_2_epi_subset <-  subset(x = seurat_Liver_seurat_set_1_2, subset = enough_cells == "enough")
+
+## relabeling
+seurat_Liver_seurat_set_1_2_epi_subset$Study_name <- "Ma"
+seurat_Liver_seurat_set_1_2_epi_subset$Cancer_type <- ifelse(seurat_Liver_seurat_set_1_2_epi_subset$Diagnosis == "iCCA", "iCCA", "HCC" )
+seurat_Liver_seurat_set_1_2_epi_subset$Primary_or_met <- "Primary"
+
+```
+
+
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+seurat_Liver_seurat_set_1_2_epi_subset <- seurat_analysis(seurat_Liver_seurat_set_1_2_epi_subset)
+
+#updated-revised
+saveRDS(seurat_Liver_seurat_set_1_2_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/Liver_Ma/version_06_05_05_24/seurat_Liver_seurat_set_1_2_epi_subset_revised.RDS")
+```
