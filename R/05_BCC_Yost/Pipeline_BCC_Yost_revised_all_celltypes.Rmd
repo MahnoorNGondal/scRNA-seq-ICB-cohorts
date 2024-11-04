@@ -1,0 +1,126 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+```{r}
+
+BCC_data <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/BCC_Yost/GSE123813_bcc_all_metadata.txt.gz", 
+         sep = "\t")
+row.names(BCC_data) <- BCC_data$cell.id
+
+BCC_data_count <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/BCC_Yost/GSE123813_bcc_scRNA_counts.txt.gz", sep = "\t")
+
+seurat_BCC_data_count <- CreateSeuratObject(counts = BCC_data_count)
+seurat_BCC_data_count_md <- AddMetaData(seurat_BCC_data_count, BCC_data)
+
+#########
+## no malignant cells in SCC
+SCC_data <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/BCC_Yost/GSE123813_scc_metadata.txt.gz", 
+         sep = "\t")
+row.names(SCC_data) <- SCC_data$cell.id
+
+SCC_data_count <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/BCC_Yost/GSE123813_scc_scRNA_counts.txt.gz", sep = "\t")
+0
+seurat_SCC_data_count <- CreateSeuratObject(counts = SCC_data_count)
+seurat_SCC_data_count_md <- AddMetaData(seurat_SCC_data_count, SCC_data)
+
+###
+
+seurat_BCC_SCC <- merge(seurat_BCC_data_count_md, seurat_SCC_data_count_md)
+
+
+seurat_BCC_SCC_MD <- seurat_BCC_SCC@meta.data
+seurat_BCC_SCC_MD$cell_id <- rownames(seurat_BCC_SCC_MD)
+
+clinical <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/BCC_Yost/yost.csv", 
+         sep = ",")
+
+seurat_BCC_SCC_MD <- merge(seurat_BCC_SCC_MD, clinical, by.x = "patient", "Patient")
+rownames(seurat_BCC_SCC_MD) <- seurat_BCC_SCC_MD$cell_id
+seurat_BCC_SCC_MD <- seurat_BCC_SCC_MD[,-c(1:11)]
+
+seurat_BCC_SCC <- AddMetaData(seurat_BCC_SCC, seurat_BCC_SCC_MD)
+
+```
+
+
+## refining the seurat object
+```{r}
+## converting
+seurat_BCC_SCC@meta.data$cluster <- ifelse(is.na(seurat_BCC_SCC@meta.data$cluster) | seurat_BCC_SCC@meta.data$cluster == "", "Unknown", seurat_BCC_SCC@meta.data$cluster)
+
+seurat_BCC_SCC@meta.data <- dplyr::rename(seurat_BCC_SCC@meta.data , c(cell_types = cluster) )
+
+seurat_BCC_SCC@meta.data <- dplyr::rename(seurat_BCC_SCC@meta.data , c(outcome = Response) )
+
+seurat_BCC_SCC@meta.data <- dplyr::rename(seurat_BCC_SCC@meta.data , c(donor_id = patient) )
+
+seurat_BCC_SCC$pre_post <- ifelse(seurat_BCC_SCC$treatment == "pre", "Pre", "Post")
+
+seurat_BCC_SCC@meta.data <- dplyr::rename(seurat_BCC_SCC@meta.data , c(cell_id = cell.id) )
+
+seurat_BCC_SCC$outcome <- ifelse(seurat_BCC_SCC$outcome == "Yes", "R", seurat_BCC_SCC$outcome)
+seurat_BCC_SCC$outcome <- ifelse(seurat_BCC_SCC$outcome == "No", "NR", seurat_BCC_SCC$outcome)
+seurat_BCC_SCC$outcome <- ifelse(seurat_BCC_SCC$outcome == "Yes (CR)", "CR", seurat_BCC_SCC$outcome)
+
+## pasting
+seurat_BCC_SCC$donor_id_pre_post <- paste0(seurat_BCC_SCC$donor_id, "_", seurat_BCC_SCC$pre_post)
+
+seurat_BCC_SCC$donor_id_outcome <- paste0(seurat_BCC_SCC$donor_id, "_", seurat_BCC_SCC$outcome)
+
+seurat_BCC_SCC$donor_id_cell_types <- paste0(seurat_BCC_SCC$donor_id, "_", seurat_BCC_SCC$cell_types)
+
+seurat_BCC_SCC$donor_id_cell_types_pre_post <- paste0(seurat_BCC_SCC$donor_id_cell_types, "_", seurat_BCC_SCC$pre_post)
+
+seurat_BCC_SCC$sample_id_pre_post_outcome <- paste0(seurat_BCC_SCC$donor_id_pre_post, "_", seurat_BCC_SCC$outcome )
+
+## removing samples with less than 20 cells
+seurat_BCC_SCC_tumor_md <- seurat_BCC_SCC@meta.data
+seurat_BCC_SCC_tumor_md_subset <- seurat_BCC_SCC_tumor_md[seurat_BCC_SCC_tumor_md$donor_id_cell_types_pre_post %in% names(which(table(seurat_BCC_SCC_tumor_md$donor_id_cell_types_pre_post) > 20)), ]
+
+seurat_BCC_SCC$enough_cells <- ifelse(seurat_BCC_SCC$donor_id_cell_types_pre_post %in% seurat_BCC_SCC_tumor_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+seurat_BCC_SCC_tumor_subset <-  subset(x = seurat_BCC_SCC, subset = enough_cells == "enough")
+
+## relabeling
+seurat_BCC_SCC_tumor_subset$Study_name <- "Yost"
+seurat_BCC_SCC_tumor_subset$Cancer_type <- "Basal_Cell_Carcinoma"
+seurat_BCC_SCC_tumor_subset@meta.data$Primary_or_met <- "Metastatic"
+
+```
+
+
+
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+
+seurat_BCC_SCC_tumor_subset <- seurat_analysis(seurat_BCC_SCC_tumor_subset)
+
+#updated-revised
+saveRDS(seurat_BCC_SCC_tumor_subset, "/mctp/share/users/gondal/01_scHLA/03_output/BCC_York/version_05_05_05_24/seurat_BCC_SCC_tumor_subset_revised.RDS")
+```
+
