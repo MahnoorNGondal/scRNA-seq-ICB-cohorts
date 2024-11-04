@@ -18,6 +18,12 @@ Link to the data above: [https://docs.google.com/spreadsheets/d/17JrD1BEhG1CxLW1
 
 The pseudobulk data can be analyzed using Rshiny app: [https://scrnaseqicb.shinyapps.io/icbsc_pseudobulk_v12/](https://scrnaseqicb.shinyapps.io/iscsc_pseudobulk_v12/)
 
+**ShinyCell**
+- All cells
+https://scrnaseqicb.shinyapps.io/06_shinycell_all/
+- Malignant cells only
+https://scrnaseqicb.shinyapps.io/shinyapp/
+
 ### Requirements
 In order to run the Rmd files, you will need to install the following dependencies:
 (please use R version 4.1.1)
