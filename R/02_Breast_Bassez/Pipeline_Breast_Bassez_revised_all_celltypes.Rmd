@@ -1,0 +1,109 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Bassez_counts_treatment_naive <- readRDS("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1863-counts_cells_cohort1.rds")
+
+meta_data_treatment_naive <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1872-BIOKEY_metaData_cohort1_web.csv", 
+         sep = ",")
+row.names(meta_data_treatment_naive) <- meta_data_treatment_naive$Cell
+
+seurat_Bassez_counts_treatment_naive <- CreateSeuratObject(counts = Bassez_counts_treatment_naive)
+seurat_Bassez_counts_treatment_naive <- AddMetaData(seurat_Bassez_counts_treatment_naive, meta_data_treatment_naive)
+
+
+#####################
+
+Bassez_counts_neoadjuvant <- readRDS("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1867-counts_cells_cohort2.rds")
+
+meta_data_neoadjuvant <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/breast_Bassez/1871-BIOKEY_metaData_cohort2_web.csv", 
+         sep = ",")
+row.names(meta_data_neoadjuvant) <- meta_data_neoadjuvant$Cell
+
+seurat_Bassez_counts_neoadjuvant <- CreateSeuratObject(counts = Bassez_counts_neoadjuvant)
+seurat_Bassez_counts_neoadjuvant <- AddMetaData(seurat_Bassez_counts_neoadjuvant, meta_data_neoadjuvant)
+
+
+```
+
+## refining the seurat object
+```{r}
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant <- merge(seurat_Bassez_counts_treatment_naive, seurat_Bassez_counts_neoadjuvant)
+
+## converting
+seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data , c(cell_types = cellType) )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data , c(outcome = expansion) )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data , c(donor_id = patient_id) )
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$pre_post <- ifelse(seurat_Bassez_counts_treatment_naive_neoadjuvant$timepoint == "Pre", "Pre", "Post")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data , c(cell_id = Cell) )
+
+## pasting
+seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_pre_post <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant$pre_post)
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_outcome <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant$outcome)
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_cell_types <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant$cell_types)
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_cell_types_pre_post <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_cell_types, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant$pre_post)
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$sample_id_pre_post_outcome <- paste0(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_pre_post, "_", seurat_Bassez_counts_treatment_naive_neoadjuvant$outcome )
+
+## removing samples with less than 20 cells
+seurat_Bassez_counts_treatment_naive_neoadjuvant_md <- seurat_Bassez_counts_treatment_naive_neoadjuvant@meta.data
+seurat_Bassez_counts_treatment_naive_neoadjuvant_md_subset <- seurat_Bassez_counts_treatment_naive_neoadjuvant_md[seurat_Bassez_counts_treatment_naive_neoadjuvant_md$donor_id_cell_types_pre_post %in% names(which(table(seurat_Bassez_counts_treatment_naive_neoadjuvant_md$donor_id_cell_types_pre_post) > 20)), ]
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant$enough_cells <- ifelse(seurat_Bassez_counts_treatment_naive_neoadjuvant$donor_id_cell_types_pre_post %in% seurat_Bassez_counts_treatment_naive_neoadjuvant_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <-  subset(x = seurat_Bassez_counts_treatment_naive_neoadjuvant, subset = enough_cells == "enough")
+
+## relabeling
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Study_name <- "Bassez"
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset$Primary_or_met <- "Primary"
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data <- dplyr::rename(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset@meta.data , c(Cancer_type = BC_type) )
+
+
+```
+
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset <- seurat_analysis(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset)
+
+#updated-revised
+saveRDS(seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/breast_bassez/version_09_05_05_24/seurat_Bassez_counts_treatment_naive_neoadjuvant_epi_subset_revised.RDS")
+
+```
+
+
