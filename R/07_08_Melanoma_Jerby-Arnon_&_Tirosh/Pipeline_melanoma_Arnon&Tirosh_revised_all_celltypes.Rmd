@@ -1,0 +1,154 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+```{r}
+cluster_data <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/melanoma_Arnon/GSE115978_cell.annotations.csv.gz", 
+         header = TRUE,
+         sep = ",")
+row.names(cluster_data) <- cluster_data$cells
+cluster_data[1] <- NULL
+
+cluster_datam <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/melanoma_Arnon/CLUSTER_M.txt", 
+         header = TRUE,
+         sep = "\t")
+row.names(cluster_datam) <- cluster_datam$NAME
+cluster_datam <- cluster_datam[-c(1),]
+
+Meta_data <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/melanoma_Arnon/Meta-data.csv", 
+         header = TRUE,
+         sep = ",")
+row.names(Meta_data) <- Meta_data$X
+Meta_data[1] <- NULL
+
+Arnon_data <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/melanoma_Arnon/GSE115978_counts.csv.gz", 
+         header = TRUE,
+         sep = ",")
+row.names(Arnon_data) <- Arnon_data$X
+Arnon_data[1] <- NULL
+
+
+Arnon_data_m <- as.matrix(Arnon_data)
+seurat_Arnon_data <- CreateSeuratObject(counts = Arnon_data_m)
+seurat_Arnon_data_metadata <- AddMetaData(seurat_Arnon_data, cluster_data)
+
+seurat_Arnon_data_metadata_M <- AddMetaData(seurat_Arnon_data_metadata, cluster_datam)
+
+seurat_Arnon_data_metadata_M_MD <- seurat_Arnon_data_metadata_M@meta.data
+
+seurat_Arnon_data_metadata_M_MD <- rownames_to_column(seurat_Arnon_data_metadata_M_MD)
+seurat_Arnon_data_metadata_M_MD <- dplyr::rename(seurat_Arnon_data_metadata_M_MD , c(cell_id = rowname) )
+
+seurat_Arnon_data_metadata_M_MD <- merge(seurat_Arnon_data_metadata_M_MD, Meta_data, by.x = "samples", by.y = "sample")
+
+rownames(seurat_Arnon_data_metadata_M_MD) <- seurat_Arnon_data_metadata_M_MD$cell_id 
+seurat_Arnon_data_metadata_M_MD <- seurat_Arnon_data_metadata_M_MD[,-c(1:10)]
+
+seurat_Arnon_data_metadata_M <- AddMetaData(seurat_Arnon_data_metadata_M, seurat_Arnon_data_metadata_M_MD)
+
+#Note, 1 patient is missing which is in both tisosh and arnon Mel75
+
+```
+
+
+
+## refining the seurat object
+```{r}
+## converting
+seurat_Arnon_data_metadata_M@meta.data$cell.types <- ifelse(is.na(seurat_Arnon_data_metadata_M@meta.data$cell.types) | seurat_Arnon_data_metadata_M@meta.data$cell.types == "", "Unknown", seurat_Arnon_data_metadata_M@meta.data$cell.types)
+
+seurat_Arnon_data_metadata_M@meta.data <- dplyr::rename(seurat_Arnon_data_metadata_M@meta.data , c(cell_types = cell.types) )
+
+seurat_Arnon_data_metadata_M@meta.data <- dplyr::rename(seurat_Arnon_data_metadata_M@meta.data , c(donor_id = samples) )
+
+seurat_Arnon_data_metadata_M$pre_post <- ifelse(seurat_Arnon_data_metadata_M$treatment.group == "post.treatment", "Post", "Pre")
+
+seurat_Arnon_data_metadata_M@meta.data <- dplyr::rename(seurat_Arnon_data_metadata_M@meta.data , c(outcome = treated_naive) )
+
+seurat_Arnon_data_metadata_M$outcome <- ifelse(seurat_Arnon_data_metadata_M$outcome == "Untreated", "UT", seurat_Arnon_data_metadata_M$outcome)
+
+seurat_Arnon_data_metadata_M$outcome <- ifelse(seurat_Arnon_data_metadata_M$outcome == "Post-ICI (resistant)","R", seurat_Arnon_data_metadata_M$outcome)
+
+seurat_Arnon_data_metadata_M$outcome <- ifelse(seurat_Arnon_data_metadata_M$outcome == "OR", "OR", seurat_Arnon_data_metadata_M$outcome)
+
+## pasting
+seurat_Arnon_data_metadata_M$donor_id_pre_post <- paste0(seurat_Arnon_data_metadata_M$donor_id, "_", seurat_Arnon_data_metadata_M$pre_post)
+
+seurat_Arnon_data_metadata_M$donor_id_outcome <- paste0(seurat_Arnon_data_metadata_M$donor_id, "_", seurat_Arnon_data_metadata_M$outcome)
+
+seurat_Arnon_data_metadata_M$donor_id_cell_types <- paste0(seurat_Arnon_data_metadata_M$donor_id, "_", seurat_Arnon_data_metadata_M$cell_types)
+
+seurat_Arnon_data_metadata_M$donor_id_cell_types_pre_post <- paste0(seurat_Arnon_data_metadata_M$donor_id_cell_types, "_", seurat_Arnon_data_metadata_M$pre_post)
+
+seurat_Arnon_data_metadata_M$sample_id_pre_post_outcome <- paste0(seurat_Arnon_data_metadata_M$donor_id_pre_post, "_", seurat_Arnon_data_metadata_M$outcome )
+
+## removing samples with less than 20 cells
+seurat_Arnon_data_metadata_M_mel_md <- seurat_Arnon_data_metadata_M@meta.data
+seurat_Arnon_data_metadata_M_mel_md_subset <- seurat_Arnon_data_metadata_M_mel_md[seurat_Arnon_data_metadata_M_mel_md$donor_id_cell_types_pre_post %in% names(which(table(seurat_Arnon_data_metadata_M_mel_md$donor_id_cell_types_pre_post) > 20)), ]
+
+seurat_Arnon_data_metadata_M$enough_cells <- ifelse(seurat_Arnon_data_metadata_M$donor_id_cell_types_pre_post %in% seurat_Arnon_data_metadata_M_mel_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+seurat_Arnon_data_metadata_M_mel_subset <-  subset(x = seurat_Arnon_data_metadata_M, subset = enough_cells == "enough")
+
+
+
+## relabeling
+seurat_Arnon_data_metadata_M_mel_subset$Study_name <- ifelse(seurat_Arnon_data_metadata_M_mel_subset$Cohort == "New", "Jerby_Arnon", seurat_Arnon_data_metadata_M_mel_subset$Cohort)
+seurat_Arnon_data_metadata_M@meta.data <- dplyr::rename(seurat_Arnon_data_metadata_M@meta.data , c(Cancer_type = cancer_type) )
+seurat_Arnon_data_metadata_M_mel_subset$Primary_or_met <- ifelse(seurat_Arnon_data_metadata_M_mel_subset$sample_primary_met == "met", "Metastatic", "Primary") 
+```
+
+
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+seurat_Arnon_data_metadata_M_mel_subset <- seurat_analysis(seurat_Arnon_data_metadata_M_mel_subset)
+
+#updated-revised
+saveRDS(seurat_Arnon_data_metadata_M_mel_subset, "/mctp/share/users/gondal/01_scHLA/03_output/melanoma_Arnon/version_11_05_05_24/seurat_Arnon_data_metadata_M_mel_subset_revised.RDS")
+seurat_Arnon_data_metadata_M_mel_subset <- readRDS("/mctp/share/users/gondal/01_scHLA/03_output/melanoma_Arnon/version_11_05_05_24/seurat_Arnon_data_metadata_M_mel_subset_revised.RDS")
+
+```
+
+
+```{r}
+# genes_to_compare <- c("B2M", "TP53", "SP100")  # replace with your genes of interest
+# 
+# # Extract expression data for the common cells
+# expr_obj1 <- subset_seurat_obj1[["RNA"]]@data[genes_to_compare, ]
+# expr_obj2 <- arnon_nor[["RNA"]]@data[genes_to_compare, ]
+# 
+# # Optionally convert to data frames for easier handling
+# expr_df1 <- as.data.frame(as.matrix(expr_obj1))
+# expr_df1 <- round(expr_df1, 2)
+# expr_df2 <- as.data.frame(as.matrix(expr_obj2))
+# expr_df2 <- round(expr_df2, 2)
+# 
+# # Combine data for comparison
+# comparison_df <- merge(expr_df1, expr_df2, by = "row.names", suffixes = c("_obj1", "_obj2"))
+
+```
+
