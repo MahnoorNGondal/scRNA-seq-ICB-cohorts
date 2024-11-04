@@ -1,0 +1,118 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+
+# reading the data
+```{r}
+
+Bi_whole_cluster <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/Bi.txt", 
+         sep = "\t")
+Bi_whole_cluster <- Bi_whole_cluster[-c(1),]
+row.names(Bi_whole_cluster) <- Bi_whole_cluster$NAME
+Bi_whole_cluster$NAME <- NULL
+
+
+
+cts <- ReadMtx(mtx ="/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/matrix.mtx",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/genes.tsv", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/barcodes.tsv")
+  
+Bi_seurat <- CreateSeuratObject(counts = cts)
+Bi_seurat_md <- AddMetaData(Bi_seurat, Bi_whole_cluster)
+
+Bi_seurat_md_na <-  subset(x = Bi_seurat_md, subset = species__ontology_label == "Homo sapiens")
+
+md <- read.csv("/mctp/share/users/gondal/01_scHLA/01_input/Kidney_Bi_et_al/Meta-data_Bi2021_Kidney.csv", 
+         sep = ",")
+
+Bi_seurat_md_na_MD <- Bi_seurat_md_na@meta.data
+
+Bi_seurat_md_na_MD$cell_id <- rownames(Bi_seurat_md_na_MD)
+
+Bi_seurat_md_na_MD <- merge(Bi_seurat_md_na_MD, md, by.x = "donor_id", by.y = "sample")
+rownames(Bi_seurat_md_na_MD) <- Bi_seurat_md_na_MD$cell_id
+
+Bi_seurat_md_na <- AddMetaData(Bi_seurat_md_na, Bi_seurat_md_na_MD)
+
+```
+
+## refining the seurat object
+```{r}
+## converting
+Bi_seurat_md_na <-  subset(x = Bi_seurat_md_na, subset = FinalCellType != "Misc/Undetermined")
+Bi_seurat_md_na@meta.data$FinalCellType <- ifelse(is.na(Bi_seurat_md_na@meta.data$FinalCellType) | Bi_seurat_md_na@meta.data$FinalCellType == "", "Unknown", Bi_seurat_md_na@meta.data$FinalCellType)
+
+Bi_seurat_md_na@meta.data <- dplyr::rename(Bi_seurat_md_na@meta.data , c(cell_types = Lineage) )
+
+Bi_seurat_md_na$pre_post <- ifelse(Bi_seurat_md_na$treated_naive == "naive", "Pre", "Post")
+
+Bi_seurat_md_na$outcome <- ifelse(Bi_seurat_md_na$ICB_Response == "NoICB", "UT", Bi_seurat_md_na$ICB_Response)
+
+Bi_seurat_md_na$outcome <- ifelse(Bi_seurat_md_na$outcome =="ICB_PR", "PR", Bi_seurat_md_na$outcome)
+Bi_seurat_md_na$outcome <- ifelse(Bi_seurat_md_na$outcome =="ICB_PD", "PD", Bi_seurat_md_na$outcome)
+Bi_seurat_md_na$outcome <- ifelse(Bi_seurat_md_na$outcome =="ICB_SD", "SD", Bi_seurat_md_na$outcome)
+Bi_seurat_md_na$outcome <- ifelse(Bi_seurat_md_na$outcome =="ICB_NE", "NE", Bi_seurat_md_na$outcome)
+
+## pasting
+Bi_seurat_md_na$donor_id_pre_post <- paste0(Bi_seurat_md_na$donor_id, "_", Bi_seurat_md_na$pre_post)
+
+Bi_seurat_md_na$donor_id_outcome <- paste0(Bi_seurat_md_na$donor_id, "_", Bi_seurat_md_na$outcome)
+
+Bi_seurat_md_na$donor_id_cell_types <- paste0(Bi_seurat_md_na$donor_id, "_", Bi_seurat_md_na$cell_types)
+
+Bi_seurat_md_na$donor_id_cell_types_pre_post <- paste0(Bi_seurat_md_na$donor_id_cell_types, "_", Bi_seurat_md_na$pre_post)
+
+Bi_seurat_md_na$sample_id_pre_post_outcome <- paste0(Bi_seurat_md_na$donor_id_pre_post, "_", Bi_seurat_md_na$outcome )
+
+## removing samples with less than 20 cells
+Bi_seurat_md_na_md <- Bi_seurat_md_na@meta.data
+Bi_seurat_md_na_md_subset <- Bi_seurat_md_na_md[Bi_seurat_md_na_md$donor_id_cell_types_pre_post %in% names(which(table(Bi_seurat_md_na_md$donor_id_cell_types_pre_post) > 20)), ]
+
+Bi_seurat_md_na$enough_cells <- ifelse(Bi_seurat_md_na$donor_id_cell_types_pre_post %in% Bi_seurat_md_na_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+Bi_seurat_md_na_tumor_subset_ccRCC <-  subset(x = Bi_seurat_md_na, subset = enough_cells == "enough")
+
+Bi_seurat_md_na_tumor_subset_ccRCC <-  subset(x = Bi_seurat_md_na_tumor_subset_ccRCC, subset = disease__ontology_label != "papillary renal cell carcinoma")
+
+## relabeling
+Bi_seurat_md_na_tumor_subset_ccRCC$Study_name <- "Bi"
+Bi_seurat_md_na_tumor_subset_ccRCC$Cancer_type <- "ccRCC"
+Bi_seurat_md_na_tumor_subset_ccRCC$Primary_or_met <- "Metastatic"
+
+```
+
+
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+Bi_seurat_md_na_tumor_subset_ccRCC <- seurat_analysis(Bi_seurat_md_na_tumor_subset_ccRCC)
+
+#updated-revised
+saveRDS(Bi_seurat_md_na_tumor_subset_ccRCC, "/mctp/share/users/gondal/01_scHLA/03_output/Kidney_Bi/version_09_05_05_24/Bi_seurat_md_na_tumor_subset_ccRCC_revised.RDS")
+
+```
+
