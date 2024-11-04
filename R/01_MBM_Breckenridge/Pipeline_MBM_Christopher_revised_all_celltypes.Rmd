@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+editor_options: 
+  chunk_output_type: inline
+---
+
+
+## Reading the scRNA-seq data
+```{r}
+
+base_metadata <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_base_metadata.tsv", 
+         sep = "\t")
+base_metadata <- base_metadata[-c(1),]
+row.names(base_metadata) <- base_metadata$NAME
+base_metadata$NAME <- NULL
+
+  cts <- ReadMtx(mtx = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_raw.mtx",
+          features = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_preQC_genes_raw.tsv", 
+          cells = "/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/BM_c1000_preQC_cellnames_raw.tsv", feature.column = 1)
+  
+seurat_MBM_Christopher <- CreateSeuratObject(counts = cts)
+seurat_MBM_Christopher_m <- AddMetaData(seurat_MBM_Christopher, base_metadata)
+
+
+clustering_data <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/postQC_c1000_spatial.tsv", 
+         sep = "\t")
+clustering_data <- clustering_data[-c(1),]
+row.names(clustering_data) <- clustering_data$NAME 
+clustering_data$NAME <- NULL
+
+seurat_MBM_Christopher_m <- AddMetaData(seurat_MBM_Christopher_m, clustering_data)
+
+
+clinical_data <-read.csv("/mctp/share/users/gondal/01_scHLA/01_input/MBM_Christopher/mbm.csv", 
+         sep = ",")
+clinical_data <- as.data.frame(t(clinical_data))
+colnames(clinical_data) <- clinical_data[c(1),]
+clinical_data$donor_id <- rownames(clinical_data)
+
+clinical_data$donor_id  <- gsub('\\.','',clinical_data$donor_id )
+clinical_data <- clinical_data[-c(1),]
+
+seurat_MBM_Christopher_m@meta.data <- rownames_to_column(seurat_MBM_Christopher_m@meta.data)
+seurat_MBM_Christopher_m@meta.data <- dplyr::rename(seurat_MBM_Christopher_m@meta.data , c(cell_id = rowname) )
+
+seurat_MBM_Christopher_m@meta.data <- merge(seurat_MBM_Christopher_m@meta.data, clinical_data, by = "donor_id")
+
+rownames(seurat_MBM_Christopher_m@meta.data) <- seurat_MBM_Christopher_m@meta.data$cell_id
+```
+
+## refining the seurat object
+```{r}
+## converting
+seurat_MBM_Christopher_m@meta.data$cell.type <- ifelse(is.na(seurat_MBM_Christopher_m@meta.data$cell.type) | seurat_MBM_Christopher_m@meta.data$cell.type == "", "Unknown", seurat_MBM_Christopher_m@meta.data$cell.type)
+
+seurat_MBM_Christopher_m <- subset(seurat_MBM_Christopher_m, subset = cell.type != "Unknown")
+
+seurat_MBM_Christopher_m@meta.data <- dplyr::rename(seurat_MBM_Christopher_m@meta.data , c(cell_types = cell.type) )
+
+colnames(seurat_MBM_Christopher_m@meta.data)[39] <- "outcome"
+
+seurat_MBM_Christopher_m$pre_post <- ifelse(seurat_MBM_Christopher_m$`Pre/post ICI` == "Post", "Post", "Pre")
+
+seurat_MBM_Christopher_m$outcome <- ifelse(seurat_MBM_Christopher_m$outcome == "No ICI", "UT", seurat_MBM_Christopher_m$outcome)
+
+## pasting
+seurat_MBM_Christopher_m$donor_id_pre_post <- paste0(seurat_MBM_Christopher_m$donor_id, "_", seurat_MBM_Christopher_m$pre_post)
+
+seurat_MBM_Christopher_m$donor_id_outcome <- paste0(seurat_MBM_Christopher_m$donor_id, "_", seurat_MBM_Christopher_m$outcome)
+
+seurat_MBM_Christopher_m$donor_id_cell_types <- paste0(seurat_MBM_Christopher_m$donor_id, "_", seurat_MBM_Christopher_m$cell_types)
+
+seurat_MBM_Christopher_m$donor_id_cell_types_pre_post <- paste0(seurat_MBM_Christopher_m$donor_id_cell_types, "_", seurat_MBM_Christopher_m$pre_post)
+
+seurat_MBM_Christopher_m$sample_id_pre_post_outcome <- paste0(seurat_MBM_Christopher_m$donor_id_pre_post, "_", seurat_MBM_Christopher_m$outcome )
+
+## removing samples with less than 20 cells
+seurat_MBM_Christopher_m_epi_md <- seurat_MBM_Christopher_m@meta.data
+seurat_MBM_Christopher_m_epi_md_subset <- seurat_MBM_Christopher_m_epi_md[seurat_MBM_Christopher_m_epi_md$donor_id_cell_types_pre_post %in% names(which(table(seurat_MBM_Christopher_m_epi_md$donor_id_cell_types_pre_post) > 20)), ]
+
+seurat_MBM_Christopher_m$enough_cells <- ifelse(seurat_MBM_Christopher_m$donor_id_cell_types_pre_post %in% seurat_MBM_Christopher_m_epi_md_subset$donor_id_cell_types_pre_post, "enough", "not_enough")
+
+seurat_MBM_Christopher_m_epi_subset <-  subset(x = seurat_MBM_Christopher_m, subset = enough_cells == "enough")
+
+## relabeling
+seurat_MBM_Christopher_m_epi_subset$Study_name <- "Alvarez_Breckenridge"
+seurat_MBM_Christopher_m_epi_subset$Cancer_type <- "Melanoma_derived_brain_metastases"
+seurat_MBM_Christopher_m_epi_subset$Primary_or_met <- "Metastatic"
+
+```
+## scRNA-seq analysis (clustering + normalization)
+```{r}
+seurat_analysis <- function(seurat.object) {
+  
+  seurat.object <- NormalizeData(seurat.object)
+  
+  seurat.object <- FindVariableFeatures(seurat.object)
+  
+  seurat.object <- ScaleData(seurat.object, features = rownames(seurat.object))
+  
+  seurat.object <- RunPCA(seurat.object)
+  
+  ElbowPlot(seurat.object)
+  
+  seurat.object <- FindNeighbors(seurat.object, dims = 1:20) #cryptic cluster with 10
+  
+  seurat.object <- FindClusters(seurat.object)
+  seurat.object <- RunUMAP(seurat.object, dims = 1:20)
+
+}
+
+seurat_MBM_Christopher_m_epi_subset <- seurat_analysis(seurat_MBM_Christopher_m_epi_subset)
+
+#updated-revised
+saveRDS(seurat_MBM_Christopher_m_epi_subset, "/mctp/share/users/gondal/01_scHLA/03_output/Melanoma_Christopher/version_05_05_05_24/seurat_MBM_Christopher_m_epi_subset_revised.RDS")
+```
+
+
+
+
