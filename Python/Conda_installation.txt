@@ -1,0 +1,13 @@
+conda create -n singlecell 
+
+conda install conda-forge::scanpy
+
+conda install conda-forge::anndata
+
+conda install ipykernel
+
+conda install -c conda-forge python-igraph  
+
+conda install -c conda-forge leidenalg
+
+python -m ipykernel install --user --name=singlecell --display-name "singlecell"
